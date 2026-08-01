@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MVATool.Views.Controls.ImageViewer">
+
+    <!--
+        Bố cục của control: 3 lớp chồng lên nhau trong Grid.
+          1. Ảnh — đặt góc trên-trái, Stretch=None để 1 pixel ảnh = 1 đơn vị tọa độ,
+             mọi zoom/pan đều làm qua RenderTransform (ma trận) từ code-behind.
+          2. Canvas overlay vẽ khung chọn vùng cắt (không bắt chuột).
+          3. Nút "Vừa khung" / "1:1" + phần trăm zoom ở góc dưới-phải.
+        Background=Transparent để Grid bắt được sự kiện chuột cả ở vùng trống.
+    -->
+    <Grid Background="Transparent" ClipToBounds="True">
+
+        <!-- BitmapInterpolationMode=None: zoom to thấy RÕ TỪNG PIXEL (nearest neighbor),
+             đúng kiểu tool machine vision — không bị làm nhòe như mặc định.
+
+             Image phải nằm trong Canvas: Canvas đo con với không gian VÔ HẠN nên
+             Image luôn được layout ĐỦ kích thước ảnh gốc. Nếu đặt thẳng vào Grid,
+             ảnh to hơn khung sẽ bị Grid ép nhỏ lại và Image (Stretch=None) tự vẽ
+             phần GIỮA ảnh — tức là cắt mất rìa TRƯỚC khi ma trận zoom kịp áp vào.
+             Việc cắt theo khung nhìn đã có ClipToBounds của Grid ngoài lo. -->
+        <Canvas>
+            <Image x:Name="PartImage" Stretch="None"
+                   RenderTransformOrigin="0%,0%"
+                   RenderOptions.BitmapInterpolationMode="None" />
+        </Canvas>
+
+        <Canvas IsHitTestVisible="False">
+            <Rectangle x:Name="PartSelection" IsVisible="False"
+                       Stroke="#FF00C2E8" StrokeThickness="1.5"
+                       StrokeDashArray="4,3" Fill="#3000C2E8" />
+        </Canvas>
+
+        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6"
+                Background="#60000000" CornerRadius="4" Padding="6,3">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock x:Name="PartZoomText" FontSize="11" Foreground="White"
+                           VerticalAlignment="Center" />
+                <Button x:Name="PartFitButton" Content="Vừa khung"
+                        FontSize="10" Padding="6,2" MinWidth="0" />
+                <Button x:Name="PartActualButton" Content="1:1"
+                        FontSize="10" Padding="6,2" MinWidth="0" />
+            </StackPanel>
+        </Border>
+
+    </Grid>
+
+</UserControl>

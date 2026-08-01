@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <!--
+        TẦNG THUẬT TOÁN (domain layer) — giống vai trò của VisionPlatform.Lib.
+        Chú ý: KHÔNG có package UI nào ở đây (không Avalonia). Nhờ vậy:
+          - thuật toán có thể unit test mà không cần mở app,
+          - có thể tái sử dụng cho app khác (console, web...).
+    -->
+    <ItemGroup>
+        <!-- Chỉ dùng ObservableObject cho parameter — toolkit này không phụ thuộc UI framework -->
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
+        <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+    </ItemGroup>
+
+</Project>

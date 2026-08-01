@@ -1,0 +1,654 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MVATool.ViewModels"
+        xmlns:models="using:MVATool.Models"
+        xmlns:core="using:MVATool.Core"
+        xmlns:param="using:MVATool.Core.Parameters"
+        xmlns:controls="using:MVATool.Views.Controls"
+        x:Class="MVATool.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="MVAVision — Machine Vision Suite"
+        Width="1280" Height="760" MinWidth="1050" MinHeight="620"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource MvaWindowBrush}"
+        DragDrop.AllowDrop="True">
+
+    <!--
+        VIEW: chỉ mô tả GIAO DIỆN, không có logic xử lý ảnh.
+        Mọi thứ nối với ViewModel qua {Binding}. x:DataType bật compiled binding:
+        gõ sai tên property sẽ báo lỗi ngay lúc build thay vì im lặng lúc chạy.
+
+        Bố cục kiểu tool công nghiệp:
+          ┌──────────────── HEADER: logo MVA + MVAVision + LED + đồng hồ ───────────────┐
+          ├──────────────── TOOLBAR: mở / lưu / chạy pipeline ──────────────────────────┤
+          │ THUẬT TOÁN │        ẢNH GỐC        │        KẾT QUẢ       │ PIPELINE        │
+          │ THƯ MỤC    │      (viewport có     │      (viewport có    │ NHẬT KÝ         │
+          │ GIÁM SÁT ▓ │       góc ngắm)       │       góc ngắm)      │                 │
+          ├──────────────── STATUS BAR: thông báo + pixel + CPU/RAM ────────────────────┤
+    -->
+
+    <!-- Phím tắt gọi thẳng command của ViewModel — không cần code-behind -->
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenImageCommand}" />
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveResultCommand}" />
+        <KeyBinding Gesture="F5" Command="{Binding RunPipelineCommand}" />
+    </Window.KeyBindings>
+
+    <Window.Styles>
+
+        <!-- ===== Chữ ===== -->
+        <Style Selector="TextBlock.panelHeader">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="1.5" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.mono">
+            <Setter Property="FontFamily" Value="{StaticResource MvaMonoFont}" />
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{DynamicResource MvaTextMutedBrush}" />
+        </Style>
+        <Style Selector="TextBlock.statLabel">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Foreground" Value="{DynamicResource MvaTextMutedBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.statValue">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontFamily" Value="{StaticResource MvaMonoFont}" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- ===== Khung panel + dải tiêu đề ===== -->
+        <Style Selector="Border.panel">
+            <Setter Property="Background" Value="{DynamicResource MvaPanelBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MvaBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
+        <Style Selector="Border.panelStrip">
+            <Setter Property="Background" Value="{DynamicResource MvaPanelAltBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MvaBorderBrush}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="10,7" />
+        </Style>
+        <Style Selector="Rectangle.accentTick">
+            <Setter Property="Width" Value="3" />
+            <Setter Property="Height" Value="12" />
+            <Setter Property="RadiusX" Value="1.5" />
+            <Setter Property="RadiusY" Value="1.5" />
+            <Setter Property="Fill" Value="{DynamicResource MvaAccentBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.tag">
+            <Setter Property="BorderBrush" Value="{DynamicResource MvaBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.tag > TextBlock">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="{DynamicResource MvaTextMutedBrush}" />
+        </Style>
+        <Style Selector="Border.stepCard">
+            <Setter Property="Background" Value="{DynamicResource MvaPanelAltBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MvaBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <!-- ===== Nút ===== -->
+        <Style Selector="Button.tool">
+            <Setter Property="Background" Value="#12808080" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MvaBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="11,6" />
+        </Style>
+        <Style Selector="Button.tool:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#28808080" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MvaAccentBrush}" />
+        </Style>
+        <!-- Nút CHẠY — màu nhấn, nổi bật nhất màn hình như nút Start trên máy thật -->
+        <Style Selector="Button.run">
+            <Setter Property="Background" Value="{DynamicResource MvaAccentBrush}" />
+            <Setter Property="Foreground" Value="#06222E" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="16,6" />
+        </Style>
+        <Style Selector="Button.run:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#33D6FF" />
+            <Setter Property="Foreground" Value="#06222E" />
+        </Style>
+        <Style Selector="Button.tiny">
+            <Setter Property="Padding" Value="7,3" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+        <Style Selector="ToggleButton.tiny">
+            <Setter Property="Padding" Value="7,3" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <!-- ===== Đèn LED trạng thái (Border tròn + BoxShadow tạo quầng sáng) ===== -->
+        <Style Selector="Border.led">
+            <Setter Property="Width" Value="11" />
+            <Setter Property="Height" Value="11" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Background" Value="{DynamicResource MvaOkBrush}" />
+            <Setter Property="BoxShadow" Value="0 0 8 1 #662ECC71" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.led.busy">
+            <Setter Property="Background" Value="{DynamicResource MvaBusyBrush}" />
+            <Setter Property="BoxShadow" Value="0 0 8 1 #66F5A623" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.9" IterationCount="INFINITE">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                    <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <!-- .batch đặt SAU .busy: khi chạy thư mục cả 2 class cùng bật, style sau thắng -->
+        <Style Selector="Border.led.batch">
+            <Setter Property="Background" Value="{DynamicResource MvaAccentBrush}" />
+            <Setter Property="BoxShadow" Value="0 0 8 1 #6600C2E8" />
+            <Style.Animations>
+                <Animation Duration="0:0:0.9" IterationCount="INFINITE">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                    <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.35" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- ===== Thanh đo tài nguyên ===== -->
+        <Style Selector="ProgressBar.stat">
+            <Setter Property="Height" Value="6" />
+            <Setter Property="MinHeight" Value="6" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Margin" Value="6,0" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Foreground" Value="{DynamicResource MvaAccentBrush}" />
+            <Setter Property="Background" Value="#26808080" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="ProgressBar.stat.hot">
+            <Setter Property="Foreground" Value="{DynamicResource MvaDangerBrush}" />
+        </Style>
+
+        <!-- ===== Góc ngắm trên viewport — chi tiết trang trí kiểu camera vision ===== -->
+        <Style Selector="Path.corner">
+            <Setter Property="Stroke" Value="{DynamicResource MvaAccentBrush}" />
+            <Setter Property="StrokeThickness" Value="1.5" />
+            <Setter Property="Opacity" Value="0.55" />
+        </Style>
+
+        <!-- Danh sách gọn hơn mặc định của Fluent — mật độ kiểu tool kỹ thuật -->
+        <Style Selector="ListBox.compact ListBoxItem">
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+
+    </Window.Styles>
+
+    <!--
+        DataTemplate NGẦM ĐỊNH theo kiểu dữ liệu: gặp NumberParameter thì vẽ Slider,
+        gặp BoolParameter thì vẽ CheckBox. Nhờ vậy processor mới thêm tham số gì
+        UI cũng tự hiển thị đúng — View không cần biết processor cụ thể nào.
+    -->
+    <Window.DataTemplates>
+        <DataTemplate DataType="param:NumberParameter">
+            <Grid ColumnDefinitions="96,*,44" Margin="0,4,0,0">
+                <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+                <Slider Grid.Column="1" Margin="6,0"
+                        Minimum="{Binding Min}" Maximum="{Binding Max}"
+                        TickFrequency="{Binding Step}" IsSnapToTickEnabled="True"
+                        Value="{Binding Value}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding DisplayText}" FontSize="11"
+                           FontFamily="{StaticResource MvaMonoFont}"
+                           VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+        </DataTemplate>
+        <DataTemplate DataType="param:BoolParameter">
+            <CheckBox Content="{Binding Name}" IsChecked="{Binding Value}"
+                      FontSize="11" Margin="0,4,0,0" />
+        </DataTemplate>
+    </Window.DataTemplates>
+
+    <DockPanel>
+
+        <!-- ══════════════ HEADER: nhận diện thương hiệu + trạng thái máy ══════════════ -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource MvaHeaderBrush}">
+            <Grid RowDefinitions="Auto,2">
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto" Margin="14,8">
+
+                    <!-- Logo MVA: lục giác (đai ốc công nghiệp) vẽ bằng Path — vector nên sắc nét mọi DPI -->
+                    <Grid Width="40" Height="40" VerticalAlignment="Center">
+                        <Path Data="M 20,1 L 37,10.5 L 37,29.5 L 20,39 L 3,29.5 L 3,10.5 Z"
+                              Stroke="{DynamicResource MvaAccentBrush}" StrokeThickness="2"
+                              StrokeJoin="Round">
+                            <Path.Fill>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                    <GradientStop Color="#3D00C2E8" Offset="0" />
+                                    <GradientStop Color="#140066FF" Offset="1" />
+                                </LinearGradientBrush>
+                            </Path.Fill>
+                        </Path>
+                        <TextBlock Text="MVA" FontSize="10" FontWeight="Bold" LetterSpacing="0.5"
+                                   Foreground="{DynamicResource MvaAccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+
+                    <!-- Tên tool + dòng mô tả -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0" Spacing="1">
+                        <TextBlock FontSize="20" FontWeight="Bold">
+                            <Run Text="MVA" Foreground="{DynamicResource MvaAccentBrush}" /><Run Text="Vision" FontWeight="Light" />
+                        </TextBlock>
+                        <TextBlock Classes="muted" Text="MACHINE VISION SUITE · v1.0"
+                                   FontSize="9" LetterSpacing="2.5" />
+                    </StackPanel>
+
+                    <!-- Cụm LED trạng thái: SẴN SÀNG / ĐANG XỬ LÝ / BATCH -->
+                    <StackPanel Grid.Column="3" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Classes="muted" Text="TRẠNG THÁI" FontSize="9" LetterSpacing="1.5"
+                                   HorizontalAlignment="Right" />
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <Border Classes="led"
+                                    Classes.busy="{Binding IsBusy}"
+                                    Classes.batch="{Binding IsBatchRunning}" />
+                            <TextBlock Text="{Binding SystemStateText}" FontSize="12"
+                                       FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Border Grid.Column="4" Width="1" Height="30" Margin="18,0"
+                            Background="{DynamicResource MvaBorderBrush}" />
+
+                    <!-- Đồng hồ hệ thống — SystemStatusViewModel cập nhật mỗi giây -->
+                    <StackPanel Grid.Column="5" VerticalAlignment="Center" Spacing="1">
+                        <TextBlock Classes="mono" Text="{Binding SystemStatus.ClockText}"
+                                   FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                        <TextBlock Classes="muted" Text="{Binding SystemStatus.DateText}"
+                                   FontSize="9" HorizontalAlignment="Right" />
+                    </StackPanel>
+
+                    <Button Grid.Column="6" Classes="tool" Content="🌓" Margin="14,0,0,0"
+                            VerticalAlignment="Center" Click="OnToggleThemeClick"
+                            ToolTip.Tip="Đổi giao diện sáng / tối" />
+                </Grid>
+
+                <!-- Đường kẻ nhấn dưới header — gradient cyan mờ dần kiểu bảng điều khiển -->
+                <Border Grid.Row="1">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                            <GradientStop Color="#FF00C2E8" Offset="0" />
+                            <GradientStop Color="#5500C2E8" Offset="0.45" />
+                            <GradientStop Color="#0000C2E8" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════ TOOLBAR ══════════════ -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="12,10">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="tool" Content="📂  Mở ảnh" Command="{Binding OpenImageCommand}" ToolTip.Tip="Ctrl+O" />
+                <Button Classes="tool" Content="🗂  Mở thư mục" Command="{Binding OpenFolderCommand}"
+                        ToolTip.Tip="Nạp tất cả ảnh trong một thư mục để chạy lần lượt" />
+                <Button Classes="tool" Content="💾  Lưu kết quả" Command="{Binding SaveResultCommand}" ToolTip.Tip="Ctrl+S" />
+                <Border Width="1" Height="24" Background="{DynamicResource MvaBorderBrush}" VerticalAlignment="Center" />
+                <Button Classes="run" Content="▶  CHẠY PIPELINE" Command="{Binding RunPipelineCommand}" ToolTip.Tip="F5" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="2" IsChecked="{Binding IsAutoRunEnabled}" FontSize="12"
+                          OnContent="Tự chạy khi thay đổi" OffContent="Tự chạy khi thay đổi" />
+        </Grid>
+
+        <!-- ══════════════ STATUS BAR ══════════════ -->
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource MvaHeaderBrush}"
+                BorderBrush="{DynamicResource MvaBorderBrush}" BorderThickness="0,1,0,0"
+                Padding="12,5">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <ProgressBar IsIndeterminate="True" Width="110" Margin="0,0,10,0"
+                             IsVisible="{Binding IsBusy}" />
+                <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" FontSize="12"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                    <!-- Tọa độ + màu pixel dưới con trỏ — font monospace cho số khỏi "nhảy" -->
+                    <TextBlock Classes="mono" Text="{Binding PixelInfo}" FontSize="11"
+                               VerticalAlignment="Center" Opacity="0.9" />
+                    <Border Width="1" Height="14" Background="{DynamicResource MvaBorderBrush}" VerticalAlignment="Center" />
+                    <TextBlock Classes="muted" Text="{Binding ImageInfo}" FontSize="11" VerticalAlignment="Center" />
+                    <Border Width="1" Height="14" Background="{DynamicResource MvaBorderBrush}" VerticalAlignment="Center" />
+                    <!-- Bản rút gọn của khối giám sát — nhìn thấy tải máy ở mọi lúc -->
+                    <TextBlock Classes="mono muted" Text="{Binding SystemStatus.CompactText}"
+                               FontSize="11" VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ══════════════ VÙNG LÀM VIỆC ══════════════ -->
+        <DockPanel Margin="12,0,12,12">
+
+            <!-- ===== Trái: thuật toán + thư mục ảnh + GIÁM SÁT HỆ THỐNG ===== -->
+            <Border DockPanel.Dock="Left" Classes="panel" Width="252" Margin="0,0,10,0">
+                <Grid RowDefinitions="Auto,*,Auto,Auto,*,Auto,Auto">
+
+                    <Border Classes="panelStrip">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Rectangle Classes="accentTick" />
+                            <TextBlock Classes="panelHeader" Text="THUẬT TOÁN" />
+                        </StackPanel>
+                    </Border>
+                    <ListBox Grid.Row="1" Classes="compact" Margin="6"
+                             ItemsSource="{Binding AvailableProcessors}"
+                             SelectedItem="{Binding SelectedProcessorInfo}"
+                             Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="core:ProcessorInfo">
+                                <TextBlock Text="{Binding Name}" FontSize="12" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Grid.Row="2" Classes="tool" Margin="10,0,10,10"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            Content="＋ Thêm vào pipeline" Command="{Binding AddStepCommand}" />
+
+                    <Border Grid.Row="3" Classes="panelStrip" BorderThickness="0,1,0,1">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Rectangle Classes="accentTick" />
+                                <TextBlock Classes="panelHeader" Text="THƯ MỤC ẢNH" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Classes="mono muted"
+                                       Text="{Binding FolderPositionText}" FontSize="11"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <Panel Grid.Row="4" Margin="6">
+                        <TextBlock Text="Bấm 🗂 Mở thư mục để nạp nhiều ảnh rồi chạy lần lượt."
+                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" Margin="4"
+                                   IsVisible="{Binding !ImageFiles.Count}" />
+                        <ListBox Classes="compact" ItemsSource="{Binding ImageFiles}"
+                                 SelectedItem="{Binding SelectedImageFile}"
+                                 Background="Transparent" FontSize="11">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:ImageFileItem">
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                                               ToolTip.Tip="{Binding FullPath}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Panel>
+                    <StackPanel Grid.Row="5" Margin="10,0,10,10" Spacing="6">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                            <Button Classes="tiny" Content="◀" Command="{Binding PreviousImageCommand}"
+                                    ToolTip.Tip="Ảnh trước" />
+                            <Button Grid.Column="1" Classes="tiny" Content="▶" Margin="4,0,0,0"
+                                    Command="{Binding NextImageCommand}" ToolTip.Tip="Ảnh sau" />
+                            <!-- Hai nút chung một chỗ, thay nhau hiện theo IsBatchRunning -->
+                            <Button Grid.Column="3" Classes="tiny" Content="▶▶ Chạy cả thư mục"
+                                    Command="{Binding RunFolderCommand}"
+                                    IsVisible="{Binding !IsBatchRunning}" />
+                            <Button Grid.Column="3" Classes="tiny" Content="⏹ Dừng"
+                                    Command="{Binding RunFolderCancelCommand}"
+                                    IsVisible="{Binding IsBatchRunning}" />
+                        </Grid>
+                        <CheckBox Content="Lưu kết quả vào thư mục con 'ket-qua'"
+                                  FontSize="11" IsChecked="{Binding IsBatchSaveEnabled}" />
+                    </StackPanel>
+
+                    <!-- ===== GIÁM SÁT HỆ THỐNG: CPU / RAM / ổ đĩa — cập nhật mỗi giây ===== -->
+                    <Border Grid.Row="6" Background="{DynamicResource MvaPanelAltBrush}"
+                            BorderBrush="{DynamicResource MvaBorderBrush}" BorderThickness="0,1,0,0"
+                            Padding="10,8">
+                        <StackPanel Spacing="7">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Rectangle Classes="accentTick" />
+                                <TextBlock Classes="panelHeader" Text="GIÁM SÁT HỆ THỐNG" />
+                            </StackPanel>
+
+                            <Grid ColumnDefinitions="34,*,86">
+                                <TextBlock Classes="statLabel" Text="CPU" />
+                                <ProgressBar Grid.Column="1" Classes="stat"
+                                             Classes.hot="{Binding SystemStatus.IsCpuHigh}"
+                                             Maximum="100" Value="{Binding SystemStatus.CpuPercent}" />
+                                <TextBlock Grid.Column="2" Classes="statValue"
+                                           Text="{Binding SystemStatus.CpuText}" />
+                            </Grid>
+
+                            <Grid ColumnDefinitions="34,*,86">
+                                <TextBlock Classes="statLabel" Text="RAM" />
+                                <ProgressBar Grid.Column="1" Classes="stat"
+                                             Classes.hot="{Binding SystemStatus.IsRamHigh}"
+                                             Maximum="100" Value="{Binding SystemStatus.RamPercent}" />
+                                <TextBlock Grid.Column="2" Classes="statValue"
+                                           Text="{Binding SystemStatus.RamText}"
+                                           ToolTip.Tip="RAM đã dùng / tổng RAM của máy" />
+                            </Grid>
+
+                            <!-- Mỗi ổ đĩa cố định một dòng: thanh = mức ĐÃ DÙNG, số = còn trống -->
+                            <ItemsControl ItemsSource="{Binding SystemStatus.Drives}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:DriveStatusViewModel">
+                                        <Grid ColumnDefinitions="34,*,86" Margin="0,0,0,7">
+                                            <TextBlock Classes="statLabel" Text="{Binding Name}" />
+                                            <ProgressBar Grid.Column="1" Classes="stat"
+                                                         Classes.hot="{Binding IsAlmostFull}"
+                                                         Maximum="100" Value="{Binding UsedPercent}" />
+                                            <TextBlock Grid.Column="2" Classes="statValue"
+                                                       Text="{Binding FreeText}"
+                                                       ToolTip.Tip="{Binding DetailText}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="statLabel" Text="Bộ nhớ ứng dụng" />
+                                <TextBlock Grid.Column="1" Classes="statValue"
+                                           Text="{Binding SystemStatus.ProcessMemoryText}"
+                                           ToolTip.Tip="Working set của MVAVision — tăng mãi không giảm là dấu hiệu rò rỉ bộ nhớ" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+            </Border>
+
+            <!-- ===== Phải: pipeline + nhật ký ===== -->
+            <Border DockPanel.Dock="Right" Classes="panel" Width="330" Margin="10,0,0,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Classes="panelStrip">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Rectangle Classes="accentTick" />
+                                <TextBlock Classes="panelHeader" Text="PIPELINE XỬ LÝ" />
+                            </StackPanel>
+                            <Border Grid.Column="1" Classes="tag" Margin="8,0,0,0">
+                                <TextBlock Text="{Binding Pipeline.Count, StringFormat='{}{0} BƯỚC'}" />
+                            </Border>
+                            <Button Grid.Column="3" Classes="tiny" Content="Xóa hết"
+                                    Command="{Binding ClearPipelineCommand}" />
+                        </Grid>
+                    </Border>
+
+                    <DockPanel DockPanel.Dock="Bottom" Height="180">
+                        <Border DockPanel.Dock="Top" Classes="panelStrip" BorderThickness="0,1,0,1">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Rectangle Classes="accentTick" />
+                                <TextBlock Classes="panelHeader" Text="NHẬT KÝ THAO TÁC" />
+                            </StackPanel>
+                        </Border>
+                        <ListBox Classes="compact" Margin="6" ItemsSource="{Binding History}"
+                                 Background="Transparent" FontSize="11">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:LogEntry">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Classes="mono" Text="{Binding TimeText}" Opacity="0.6" />
+                                        <TextBlock Text="{Binding Operation}" />
+                                        <TextBlock Classes="mono" Text="{Binding DurationText}" Opacity="0.6" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <ScrollViewer Padding="8">
+                        <StackPanel>
+                            <!-- !Pipeline.Count: Avalonia tự hiểu 0 = false → hiện dòng gợi ý khi rỗng -->
+                            <TextBlock Text="Chưa có bước nào — chọn thuật toán bên trái rồi bấm Thêm."
+                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" Margin="4"
+                                       IsVisible="{Binding !Pipeline.Count}" />
+
+                            <ItemsControl ItemsSource="{Binding Pipeline}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PipelineStepViewModel">
+                                        <Border Classes="stepCard">
+                                            <StackPanel>
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+                                                    <CheckBox IsChecked="{Binding IsEnabled}" MinWidth="0" Padding="0"
+                                                              VerticalAlignment="Center"
+                                                              ToolTip.Tip="Bật / tắt bước này" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" Margin="6,0,0,0"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="2" Classes="mono" Text="{Binding DurationText}"
+                                                               FontSize="10" Foreground="{DynamicResource MvaAccentBrush}"
+                                                               VerticalAlignment="Center" Margin="8,0" />
+                                                    <!--
+                                                        Bên trong DataTemplate, DataContext là PipelineStepViewModel,
+                                                        nhưng command nằm ở MainWindowViewModel → dùng $parent[Window]
+                                                        để "thoát ra ngoài" lấy DataContext của Window,
+                                                        và CommandParameter="{Binding}" truyền chính step này vào command.
+                                                    -->
+                                                    <Button Grid.Column="3" Classes="tiny" Content="↑" ToolTip.Tip="Chuyển lên"
+                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveStepUpCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                    <Button Grid.Column="4" Classes="tiny" Content="↓" Margin="4,0,0,0" ToolTip.Tip="Chuyển xuống"
+                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).MoveStepDownCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                    <Button Grid.Column="5" Classes="tiny" Content="✕" Margin="4,0,0,0" ToolTip.Tip="Xóa bước"
+                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveStepCommand}"
+                                                            CommandParameter="{Binding}" />
+                                                </Grid>
+                                                <!-- Tham số của bước — dùng DataTemplate ngầm định khai báo ở đầu file -->
+                                                <ItemsControl ItemsSource="{Binding Parameters}"
+                                                              IsVisible="{Binding HasParameters}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- ===== Giữa: so sánh ảnh gốc / kết quả ===== -->
+            <Grid ColumnDefinitions="*,6,*">
+
+                <Border Classes="panel">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Classes="panelStrip">
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Rectangle Classes="accentTick" />
+                                    <TextBlock Classes="panelHeader" Text="ẢNH GỐC" />
+                                </StackPanel>
+                                <Border Grid.Column="1" Classes="tag" Margin="8,0,0,0">
+                                    <TextBlock Text="SOURCE" />
+                                </Border>
+                                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4">
+                                    <ToggleButton Classes="tiny" Content="✂ Cắt" IsChecked="{Binding IsCropMode}"
+                                                  ToolTip.Tip="Bật rồi kéo chuột trên ảnh để chọn vùng cắt" />
+                                    <Button Classes="tiny" Content="⟲" Command="{Binding RotateLeftCommand}"
+                                            ToolTip.Tip="Xoay trái 90°" />
+                                    <Button Classes="tiny" Content="⟳" Command="{Binding RotateRightCommand}"
+                                            ToolTip.Tip="Xoay phải 90°" />
+                                    <Button Classes="tiny" Content="⇆" Command="{Binding FlipHorizontalCommand}"
+                                            ToolTip.Tip="Lật ngang" />
+                                    <Button Classes="tiny" Content="⇅" Command="{Binding FlipVerticalCommand}"
+                                            ToolTip.Tip="Lật dọc" />
+                                    <Button Classes="tiny" Content="↩" Command="{Binding RestoreOriginalCommand}"
+                                            ToolTip.Tip="Khôi phục ảnh như lúc mở file" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Panel Background="{DynamicResource MvaViewportBrush}">
+                            <!-- ObjectConverters.IsNull: converter có sẵn của Avalonia -->
+                            <TextBlock Text="Kéo thả ảnh vào đây, hoặc bấm 📂 Mở ảnh (Ctrl+O)&#x0a;&#x0a;Lăn chuột: zoom — Kéo chuột: di chuyển&#x0a;Double-click: vừa khung"
+                                       TextAlignment="Center" Opacity="0.5"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsVisible="{Binding OriginalImage, Converter={x:Static ObjectConverters.IsNull}}" />
+                            <!--
+                                ImageViewer là custom control tự viết (Views/Controls/):
+                                zoom / pan / chọn vùng cắt / báo tọa độ pixel về ViewModel
+                                qua 2 command — hoàn toàn bind được, không cần code-behind ở đây.
+                            -->
+                            <controls:ImageViewer Source="{Binding OriginalImage}"
+                                                  IsCropEnabled="{Binding IsCropMode}"
+                                                  CropCommand="{Binding ApplyCropCommand}"
+                                                  PixelHoverCommand="{Binding HoverOriginalPixelCommand}" />
+                            <!-- 4 góc ngắm trang trí — không bắt chuột -->
+                            <Grid IsHitTestVisible="False" Margin="8">
+                                <Path Classes="corner" Data="M 0,16 L 0,0 L 16,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                <Path Classes="corner" Data="M 0,0 L 16,0 L 16,16" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                <Path Classes="corner" Data="M 0,0 L 0,16 L 16,16" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                                <Path Classes="corner" Data="M 16,0 L 16,16 L 0,16" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            </Grid>
+                        </Panel>
+                    </DockPanel>
+                </Border>
+
+                <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent" />
+
+                <Border Grid.Column="2" Classes="panel">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Classes="panelStrip">
+                            <Grid ColumnDefinitions="Auto,Auto,*">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Rectangle Classes="accentTick" />
+                                    <TextBlock Classes="panelHeader" Text="KẾT QUẢ" />
+                                </StackPanel>
+                                <Border Grid.Column="1" Classes="tag" Margin="8,0,0,0">
+                                    <TextBlock Text="RESULT" />
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <Panel Background="{DynamicResource MvaViewportBrush}">
+                            <TextBlock Text="Chạy pipeline để xem kết quả (F5)"
+                                       Opacity="0.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsVisible="{Binding ResultImage, Converter={x:Static ObjectConverters.IsNull}}" />
+                            <controls:ImageViewer Source="{Binding ResultImage}"
+                                                  PixelHoverCommand="{Binding HoverResultPixelCommand}" />
+                            <Grid IsHitTestVisible="False" Margin="8">
+                                <Path Classes="corner" Data="M 0,16 L 0,0 L 16,0" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                <Path Classes="corner" Data="M 0,0 L 16,0 L 16,16" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                                <Path Classes="corner" Data="M 0,0 L 0,16 L 16,16" HorizontalAlignment="Left" VerticalAlignment="Bottom" />
+                                <Path Classes="corner" Data="M 16,0 L 16,16 L 0,16" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            </Grid>
+                        </Panel>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+        </DockPanel>
+
+    </DockPanel>
+
+</Window>

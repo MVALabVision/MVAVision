@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <!-- Cần cho ImageService.ToBitmap (copy pixel trực tiếp bằng con trỏ) -->
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- UI framework (giống VisionPlatform) -->
+        <PackageReference Include="Avalonia" Version="11.3.4" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.4" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.4" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.4" />
+        <PackageReference Include="Avalonia.Diagnostics" Version="11.3.4" Condition="'$(Configuration)' == 'Debug'" />
+
+        <!-- MVVM toolkit: ObservableObject, [ObservableProperty], [RelayCommand] -->
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
+
+        <!-- DI container — dùng trong composition root (App.axaml.cs) -->
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+
+        <!-- OpenCV: managed wrapper + native runtime cho Windows -->
+        <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+        <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Tầng thuật toán — app chỉ THAM CHIẾU, không chứa thuật toán -->
+        <ProjectReference Include="..\MVATool.Core\MVATool.Core.csproj" />
+    </ItemGroup>
+
+</Project>
