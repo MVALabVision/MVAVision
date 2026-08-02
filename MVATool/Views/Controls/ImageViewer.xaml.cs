@@ -1,9 +1,12 @@
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Media;
-using Avalonia.Media.Imaging;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+// Tọa độ pixel ảnh dùng kiểu của OpenCvSharp (int) để phân biệt rạch ròi với
+// tọa độ màn hình của WPF (System.Windows.Point — double).
+using CvPoint = OpenCvSharp.Point;
+using CvRect = OpenCvSharp.Rect;
 
 namespace MVATool.Views.Controls;
 
@@ -16,47 +19,49 @@ namespace MVATool.Views.Controls;
 /// hiển thị" (ma trận zoom/pan), KHÔNG phải logic nghiệp vụ.
 ///
 /// Control giao tiếp với thế giới bên ngoài đúng chuẩn MVVM:
-///   - Nhận dữ liệu qua StyledProperty (Source, IsCropEnabled) — bind được từ XAML.
-///   - Trả kết quả tương tác qua 2 ICommand cũng là StyledProperty:
-///       PixelHoverCommand(PixelPoint?) — con trỏ đang chỉ pixel nào (null = ra ngoài ảnh)
-///       CropCommand(PixelRect)         — người dùng vừa kéo chọn xong vùng cắt
+///   - Nhận dữ liệu qua DependencyProperty (Source, IsCropEnabled) — bind được từ XAML.
+///   - Trả kết quả tương tác qua 2 ICommand cũng là DependencyProperty:
+///       PixelHoverCommand(CvPoint?) — con trỏ đang chỉ pixel nào (null = ra ngoài ảnh)
+///       CropCommand(CvRect)         — người dùng vừa kéo chọn xong vùng cắt
 ///   Nhờ vậy ViewModel không biết gì về control, control không biết gì về ViewModel.
 /// </summary>
 public partial class ImageViewer : UserControl
 {
-    public static readonly StyledProperty<Bitmap?> SourceProperty =
-        AvaloniaProperty.Register<ImageViewer, Bitmap?>(nameof(Source));
+    public static readonly DependencyProperty SourceProperty = DependencyProperty.Register(
+        nameof(Source), typeof(BitmapSource), typeof(ImageViewer),
+        new PropertyMetadata(null, (d, _) => ((ImageViewer)d).OnSourceChanged()));
 
-    public static readonly StyledProperty<bool> IsCropEnabledProperty =
-        AvaloniaProperty.Register<ImageViewer, bool>(nameof(IsCropEnabled));
+    public static readonly DependencyProperty IsCropEnabledProperty = DependencyProperty.Register(
+        nameof(IsCropEnabled), typeof(bool), typeof(ImageViewer),
+        new PropertyMetadata(false, (d, _) => ((ImageViewer)d).OnIsCropEnabledChanged()));
 
-    public static readonly StyledProperty<ICommand?> CropCommandProperty =
-        AvaloniaProperty.Register<ImageViewer, ICommand?>(nameof(CropCommand));
+    public static readonly DependencyProperty CropCommandProperty = DependencyProperty.Register(
+        nameof(CropCommand), typeof(ICommand), typeof(ImageViewer));
 
-    public static readonly StyledProperty<ICommand?> PixelHoverCommandProperty =
-        AvaloniaProperty.Register<ImageViewer, ICommand?>(nameof(PixelHoverCommand));
+    public static readonly DependencyProperty PixelHoverCommandProperty = DependencyProperty.Register(
+        nameof(PixelHoverCommand), typeof(ICommand), typeof(ImageViewer));
 
-    public Bitmap? Source
+    public BitmapSource? Source
     {
-        get => GetValue(SourceProperty);
+        get => (BitmapSource?)GetValue(SourceProperty);
         set => SetValue(SourceProperty, value);
     }
 
     public bool IsCropEnabled
     {
-        get => GetValue(IsCropEnabledProperty);
+        get => (bool)GetValue(IsCropEnabledProperty);
         set => SetValue(IsCropEnabledProperty, value);
     }
 
     public ICommand? CropCommand
     {
-        get => GetValue(CropCommandProperty);
+        get => (ICommand?)GetValue(CropCommandProperty);
         set => SetValue(CropCommandProperty, value);
     }
 
     public ICommand? PixelHoverCommand
     {
-        get => GetValue(PixelHoverCommandProperty);
+        get => (ICommand?)GetValue(PixelHoverCommandProperty);
         set => SetValue(PixelHoverCommandProperty, value);
     }
 
@@ -75,69 +80,64 @@ public partial class ImageViewer : UserControl
     private enum ViewMode { Auto, Fit, Free }
 
     private ViewMode _mode = ViewMode.Auto;
-    private PixelSize _lastSourceSize; // để nhận ra "vẫn ảnh kích thước cũ" khi Source đổi
-    private Point? _panLast;           // vị trí chuột lần trước khi đang kéo pan
-    private PixelPoint? _cropStart;    // pixel bắt đầu kéo chọn vùng cắt
+    private (int Width, int Height) _lastSourceSize; // nhận ra "vẫn ảnh kích thước cũ" khi Source đổi
+    private Point? _panLast;                          // vị trí chuột lần trước khi đang kéo pan
+    private CvPoint? _cropStart;                      // pixel bắt đầu kéo chọn vùng cắt
 
     public ImageViewer()
     {
         InitializeComponent();
 
-        PointerWheelChanged += OnPointerWheelChanged;
-        PointerPressed += OnPointerPressed;
-        PointerMoved += OnPointerMoved;
-        PointerReleased += OnPointerReleased;
-        PointerExited += OnPointerExited;
-        DoubleTapped += (_, _) => { if (!IsCropEnabled) Fit(); };
+        MouseWheel += OnMouseWheelChanged;
+        MouseDown += OnMousePressed;
+        MouseMove += OnMouseMoved;
+        MouseUp += OnMouseReleased;
+        MouseLeave += (_, _) => PixelHoverCommand?.Execute(null);
+        SizeChanged += OnViewerSizeChanged;
 
         PartFitButton.Click += (_, _) => Fit();
         PartActualButton.Click += (_, _) => SetActualSize();
     }
 
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    private void OnSourceChanged()
     {
-        base.OnPropertyChanged(change);
+        PartImage.Source = Source;
 
-        if (change.Property == SourceProperty)
+        if (Source is null)
         {
-            PartImage.Source = Source;
-
-            if (Source is null)
-            {
-                _lastSourceSize = default;
-                _mode = ViewMode.Auto;
-                _matrix = Matrix.Identity;
-                UpdateView();
-            }
-            else if (Source.PixelSize != _lastSourceSize)
-            {
-                // Ảnh MỚI (khác kích thước) → hiện trọn vẹn ảnh, tối đa 100%:
-                // ảnh nhỏ giữ đúng kích thước gốc, ảnh to thu nhỏ cho khỏi bị cắt.
-                _lastSourceSize = Source.PixelSize;
-                AutoView();
-            }
-            else
-            {
-                // CÙNG kích thước (chạy lại pipeline, kéo slider, lật ảnh...) →
-                // GIỮ NGUYÊN zoom/pan đang xem, chỉ thay nội dung ảnh.
-                UpdateView();
-            }
+            _lastSourceSize = default;
+            _mode = ViewMode.Auto;
+            _matrix = Matrix.Identity;
+            UpdateView();
         }
-        else if (change.Property == IsCropEnabledProperty)
+        else if ((Source.PixelWidth, Source.PixelHeight) != _lastSourceSize)
         {
-            // Đổi con trỏ chuột thành dấu + khi ở chế độ cắt — phản hồi trực quan.
-            Cursor = IsCropEnabled ? new Cursor(StandardCursorType.Cross) : Cursor.Default;
-            if (!IsCropEnabled)
-            {
-                _cropStart = null;
-                PartSelection.IsVisible = false;
-            }
+            // Ảnh MỚI (khác kích thước) → hiện trọn vẹn ảnh, tối đa 100%:
+            // ảnh nhỏ giữ đúng kích thước gốc, ảnh to thu nhỏ cho khỏi bị cắt.
+            _lastSourceSize = (Source.PixelWidth, Source.PixelHeight);
+            AutoView();
+        }
+        else
+        {
+            // CÙNG kích thước (chạy lại pipeline, kéo slider, lật ảnh...) →
+            // GIỮ NGUYÊN zoom/pan đang xem, chỉ thay nội dung ảnh.
+            UpdateView();
         }
     }
 
-    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    private void OnIsCropEnabledChanged()
     {
-        base.OnSizeChanged(e);
+        // Đổi con trỏ chuột thành dấu + khi ở chế độ cắt — phản hồi trực quan.
+        Cursor = IsCropEnabled ? Cursors.Cross : null;
+        if (!IsCropEnabled)
+        {
+            _cropStart = null;
+            PartSelection.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void OnViewerSizeChanged(object sender, SizeChangedEventArgs e)
+    {
         // Khung đổi kích thước: chế độ tự động nào thì căn lại theo chế độ đó.
         // (Quan trọng lúc mở app: Source được set khi khung còn 0×0 — sự kiện
         // này chạy sau khi layout xong mới căn giữa đúng được.)
@@ -156,17 +156,17 @@ public partial class ImageViewer : UserControl
     /// </summary>
     private void AutoView()
     {
-        if (Source is null || Bounds.Width <= 0 || Bounds.Height <= 0)
+        if (Source is null || ActualWidth <= 0 || ActualHeight <= 0)
         {
             UpdateView();
             return;
         }
 
         var scale = Math.Min(1.0, Math.Min(
-            Bounds.Width / Source.PixelSize.Width,
-            Bounds.Height / Source.PixelSize.Height));
-        var offsetX = (Bounds.Width - Source.PixelSize.Width * scale) / 2;
-        var offsetY = (Bounds.Height - Source.PixelSize.Height * scale) / 2;
+            ActualWidth / Source.PixelWidth,
+            ActualHeight / Source.PixelHeight));
+        var offsetX = (ActualWidth - Source.PixelWidth * scale) / 2;
+        var offsetY = (ActualHeight - Source.PixelHeight * scale) / 2;
 
         // Ở 100%, làm tròn offset để mép ảnh nằm đúng lưới pixel màn hình.
         if (scale >= 1.0)
@@ -183,17 +183,17 @@ public partial class ImageViewer : UserControl
     /// <summary>Thu phóng để ảnh vừa khít khung, căn giữa.</summary>
     private void Fit()
     {
-        if (Source is null || Bounds.Width <= 0 || Bounds.Height <= 0)
+        if (Source is null || ActualWidth <= 0 || ActualHeight <= 0)
         {
             UpdateView();
             return;
         }
 
         var scale = Math.Min(
-            Bounds.Width / Source.PixelSize.Width,
-            Bounds.Height / Source.PixelSize.Height);
-        var offsetX = (Bounds.Width - Source.PixelSize.Width * scale) / 2;
-        var offsetY = (Bounds.Height - Source.PixelSize.Height * scale) / 2;
+            ActualWidth / Source.PixelWidth,
+            ActualHeight / Source.PixelHeight);
+        var offsetX = (ActualWidth - Source.PixelWidth * scale) / 2;
+        var offsetY = (ActualHeight - Source.PixelHeight * scale) / 2;
 
         _matrix = new Matrix(scale, 0, 0, scale, offsetX, offsetY);
         _mode = ViewMode.Fit;
@@ -205,29 +205,26 @@ public partial class ImageViewer : UserControl
     {
         if (Source is null)
             return;
-        ZoomAround(new Point(Bounds.Width / 2, Bounds.Height / 2), 1.0 / _matrix.M11);
+        ZoomAround(new Point(ActualWidth / 2, ActualHeight / 2), 1.0 / _matrix.M11);
     }
 
     /// <summary>
     /// Zoom quanh một điểm màn hình: điểm đó đứng yên, mọi thứ khác nở ra / co lại.
-    /// Công thức: M' = M · T(-p) · S(f) · T(p)  (dịch điểm p về gốc, scale, dịch trả lại).
+    /// Matrix.ScaleAt của WPF chính là phép M' = M · T(-p) · S(f) · T(p).
     /// </summary>
     private void ZoomAround(Point screenPoint, double factor)
     {
-        _matrix = _matrix
-                  * Matrix.CreateTranslation(-screenPoint.X, -screenPoint.Y)
-                  * Matrix.CreateScale(factor, factor)
-                  * Matrix.CreateTranslation(screenPoint.X, screenPoint.Y);
+        _matrix.ScaleAt(factor, factor, screenPoint.X, screenPoint.Y);
         _mode = ViewMode.Free;
         UpdateView();
     }
 
-    private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    private void OnMouseWheelChanged(object sender, MouseWheelEventArgs e)
     {
         if (Source is null)
             return;
 
-        var factor = e.Delta.Y > 0 ? 1.25 : 1 / 1.25;
+        var factor = e.Delta > 0 ? 1.25 : 1 / 1.25;
         var newScale = _matrix.M11 * factor;
         if (newScale is < 0.02 or > 64) // chặn zoom quá đà
             return;
@@ -236,21 +233,29 @@ public partial class ImageViewer : UserControl
         e.Handled = true;
     }
 
-    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnMousePressed(object sender, MouseButtonEventArgs e)
     {
-        var point = e.GetCurrentPoint(this);
+        // Double-click chuột trái = vừa khung (khi không ở chế độ cắt).
+        if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2 && !IsCropEnabled)
+        {
+            Fit();
+            e.Handled = true;
+            return;
+        }
 
-        if (IsCropEnabled && point.Properties.IsLeftButtonPressed
-                          && ToPixel(point.Position) is { } start)
+        var position = e.GetPosition(this);
+
+        if (IsCropEnabled && e.ChangedButton == MouseButton.Left
+                          && ToPixel(position) is { } start)
         {
             // Bắt đầu kéo chọn vùng cắt (chỉ khi bấm TRÊN ảnh).
             _cropStart = start;
             UpdateSelection(start, start);
         }
-        else if (point.Properties.IsLeftButtonPressed || point.Properties.IsMiddleButtonPressed)
+        else if (e.ChangedButton is MouseButton.Left or MouseButton.Middle)
         {
             // Bắt đầu pan (kéo thả để di chuyển ảnh).
-            _panLast = point.Position;
+            _panLast = position;
         }
         else
         {
@@ -259,11 +264,11 @@ public partial class ImageViewer : UserControl
 
         // Capture: từ giờ mọi sự kiện chuột đổ về control này kể cả khi
         // con trỏ trượt ra ngoài — kéo thả mới không bị đứt giữa chừng.
-        e.Pointer.Capture(this);
+        CaptureMouse();
         e.Handled = true;
     }
 
-    private void OnPointerMoved(object? sender, PointerEventArgs e)
+    private void OnMouseMoved(object sender, MouseEventArgs e)
     {
         var position = e.GetPosition(this);
 
@@ -273,8 +278,7 @@ public partial class ImageViewer : UserControl
         }
         else if (_panLast is { } last)
         {
-            var delta = position - last;
-            _matrix = _matrix * Matrix.CreateTranslation(delta.X, delta.Y);
+            _matrix.Translate(position.X - last.X, position.Y - last.Y);
             _panLast = position;
             _mode = ViewMode.Free;
             UpdateView();
@@ -284,13 +288,13 @@ public partial class ImageViewer : UserControl
         PixelHoverCommand?.Execute(ToPixel(position));
     }
 
-    private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    private void OnMouseReleased(object sender, MouseButtonEventArgs e)
     {
         if (_cropStart is { } start)
         {
             var end = ClampToImage(e.GetPosition(this));
             _cropStart = null;
-            PartSelection.IsVisible = false;
+            PartSelection.Visibility = Visibility.Collapsed;
 
             var rect = NormalizedRect(start, end);
             if (rect.Width >= 2 && rect.Height >= 2)
@@ -298,62 +302,66 @@ public partial class ImageViewer : UserControl
         }
 
         _panLast = null;
-        e.Pointer.Capture(null);
+        ReleaseMouseCapture();
     }
-
-    private void OnPointerExited(object? sender, PointerEventArgs e)
-        => PixelHoverCommand?.Execute(null);
 
     // ===== Đổi hệ tọa độ: màn hình ↔ pixel ảnh =====
 
     /// <summary>Điểm màn hình → pixel ảnh; null nếu ngoài ảnh (dùng ma trận NGHỊCH ĐẢO).</summary>
-    private PixelPoint? ToPixel(Point screenPoint)
+    private CvPoint? ToPixel(Point screenPoint)
     {
-        if (Source is null || !_matrix.TryInvert(out var inverse))
+        if (Source is null || !_matrix.HasInverse)
             return null;
 
-        var p = screenPoint.Transform(inverse);
+        // Matrix của WPF là struct → copy ra rồi Invert() không đụng bản gốc.
+        var inverse = _matrix;
+        inverse.Invert();
+
+        var p = inverse.Transform(screenPoint);
         var x = (int)Math.Floor(p.X);
         var y = (int)Math.Floor(p.Y);
-        if (x < 0 || y < 0 || x >= Source.PixelSize.Width || y >= Source.PixelSize.Height)
+        if (x < 0 || y < 0 || x >= Source.PixelWidth || y >= Source.PixelHeight)
             return null;
 
-        return new PixelPoint(x, y);
+        return new CvPoint(x, y);
     }
 
     /// <summary>Như ToPixel nhưng kẹp vào mép ảnh — dùng khi kéo chọn vùng vượt ra ngoài.</summary>
-    private PixelPoint ClampToImage(Point screenPoint)
+    private CvPoint ClampToImage(Point screenPoint)
     {
-        if (Source is null || !_matrix.TryInvert(out var inverse))
+        if (Source is null || !_matrix.HasInverse)
             return default;
 
-        var p = screenPoint.Transform(inverse);
-        var x = Math.Clamp((int)Math.Floor(p.X), 0, Source.PixelSize.Width - 1);
-        var y = Math.Clamp((int)Math.Floor(p.Y), 0, Source.PixelSize.Height - 1);
-        return new PixelPoint(x, y);
+        var inverse = _matrix;
+        inverse.Invert();
+
+        var p = inverse.Transform(screenPoint);
+        var x = Math.Clamp((int)Math.Floor(p.X), 0, Source.PixelWidth - 1);
+        var y = Math.Clamp((int)Math.Floor(p.Y), 0, Source.PixelHeight - 1);
+        return new CvPoint(x, y);
     }
 
-    private static PixelRect NormalizedRect(PixelPoint a, PixelPoint b)
+    private static CvRect NormalizedRect(CvPoint a, CvPoint b)
     {
         var x = Math.Min(a.X, b.X);
         var y = Math.Min(a.Y, b.Y);
-        return new PixelRect(x, y, Math.Abs(a.X - b.X) + 1, Math.Abs(a.Y - b.Y) + 1);
+        return new CvRect(x, y, Math.Abs(a.X - b.X) + 1, Math.Abs(a.Y - b.Y) + 1);
     }
 
     // ===== Vẽ =====
 
-    private void UpdateSelection(PixelPoint a, PixelPoint b)
+    private void UpdateSelection(CvPoint a, CvPoint b)
     {
         var rect = NormalizedRect(a, b);
         // Khung chọn lưu theo PIXEL ẢNH, vẽ theo MÀN HÌNH → transform 2 góc qua ma trận.
-        var topLeft = new Point(rect.X, rect.Y).Transform(_matrix);
-        var bottomRight = new Point(rect.X + rect.Width, rect.Y + rect.Height).Transform(_matrix);
+        var topLeft = _matrix.Transform(new Point(rect.X, rect.Y));
+        var bottomRight = _matrix.Transform(new Point(rect.X + rect.Width, rect.Y + rect.Height));
 
         Canvas.SetLeft(PartSelection, topLeft.X);
         Canvas.SetTop(PartSelection, topLeft.Y);
         PartSelection.Width = bottomRight.X - topLeft.X;
         PartSelection.Height = bottomRight.Y - topLeft.Y;
-        PartSelection.IsVisible = true;
+        PartSelection.Visibility = Visibility.Visible;
     }
 
     private void UpdateView()

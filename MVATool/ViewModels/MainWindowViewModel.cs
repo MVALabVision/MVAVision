@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using Avalonia;
-using Avalonia.Media.Imaging;
+using System.IO;
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MVATool.Core;
@@ -55,10 +55,10 @@ public partial class MainWindowViewModel : ObservableObject
     // ===== Trạng thái để View bind =====
 
     [ObservableProperty]
-    private Bitmap? _originalImage;
+    private BitmapSource? _originalImage;
 
     [ObservableProperty]
-    private Bitmap? _resultImage;
+    private BitmapSource? _resultImage;
 
     [ObservableProperty]
     private string _statusMessage = "Mở ảnh (Ctrl+O) hoặc kéo thả file ảnh vào cửa sổ để bắt đầu.";
@@ -204,10 +204,11 @@ public partial class MainWindowViewModel : ObservableObject
 
     /// <summary>
     /// ImageViewer gọi command này (qua binding CropCommand) khi người dùng
-    /// kéo chọn xong vùng cắt — tham số là vùng chọn tính theo PIXEL ẢNH.
+    /// kéo chọn xong vùng cắt — tham số là vùng chọn tính theo PIXEL ẢNH,
+    /// dùng kiểu Rect của OpenCvSharp để ViewModel không dính dáng UI framework.
     /// </summary>
     [RelayCommand]
-    private void ApplyCrop(PixelRect rect)
+    private void ApplyCrop(Rect rect)
     {
         if (_originalMat is null || IsBatchRunning)
             return;
@@ -223,7 +224,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         // new Mat(m, roi) chỉ là "cửa sổ nhìn" vào ảnh cũ → phải Clone
         // ra ảnh độc lập trước khi dispose ảnh cũ.
-        MutateOriginal(m => new Mat(m, new OpenCvSharp.Rect(x, y, w, h)).Clone(), $"Cắt ảnh {w} × {h}");
+        MutateOriginal(m => new Mat(m, new Rect(x, y, w, h)).Clone(), $"Cắt ảnh {w} × {h}");
         IsCropMode = false;
     }
 
@@ -297,12 +298,12 @@ public partial class MainWindowViewModel : ObservableObject
     // chuỗi PixelInfo cho View bind. Đúng phân vai: View đo, ViewModel tra cứu.
 
     [RelayCommand]
-    private void HoverOriginalPixel(PixelPoint? point) => UpdatePixelInfo("Gốc", _originalMat, point);
+    private void HoverOriginalPixel(Point? point) => UpdatePixelInfo("Gốc", _originalMat, point);
 
     [RelayCommand]
-    private void HoverResultPixel(PixelPoint? point) => UpdatePixelInfo("Kết quả", _resultMat, point);
+    private void HoverResultPixel(Point? point) => UpdatePixelInfo("Kết quả", _resultMat, point);
 
-    private void UpdatePixelInfo(string label, Mat? mat, PixelPoint? point)
+    private void UpdatePixelInfo(string label, Mat? mat, Point? point)
     {
         if (mat is null || point is null)
         {

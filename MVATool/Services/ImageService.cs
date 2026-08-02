@@ -1,6 +1,6 @@
-using Avalonia;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
+using System.IO;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using OpenCvSharp;
 
 namespace MVATool.Services;
@@ -34,62 +34,33 @@ public class ImageService : IImageService
             .ToList();
 
     /// <summary>
-    /// Convert bằng cách copy pixel TRỰC TIẾP vào WriteableBitmap (không encode
+    /// Convert bằng BitmapSource.Create — đọc thẳng buffer của Mat (không encode
     /// PNG trung gian) — đủ nhanh để auto-run mượt khi kéo slider trên ảnh lớn.
+    /// Layout pixel của OpenCV (Gray8 / BGR24 / BGRA32) trùng khớp PixelFormats
+    /// của WPF nên KHÔNG cần đổi kênh màu, copy nguyên khối là xong.
     /// </summary>
-    public unsafe Bitmap ToBitmap(Mat mat)
+    public BitmapSource ToBitmap(Mat mat)
     {
-        // Avalonia hiển thị pixel dạng BGRA 32-bit → đưa mọi ảnh về BGRA trước.
-        Mat bgra;
-        var ownsBgra = true;
-        switch (mat.Channels())
+        var format = mat.Channels() switch
         {
-            case 1:
-                bgra = new Mat();
-                Cv2.CvtColor(mat, bgra, ColorConversionCodes.GRAY2BGRA);
-                break;
-            case 3:
-                bgra = new Mat();
-                Cv2.CvtColor(mat, bgra, ColorConversionCodes.BGR2BGRA);
-                break;
-            case 4:
-                bgra = mat;
-                ownsBgra = false; // không được dispose ảnh của caller
-                break;
-            default:
-                throw new NotSupportedException($"Ảnh {mat.Channels()} kênh chưa được hỗ trợ.");
-        }
+            1 => PixelFormats.Gray8,
+            3 => PixelFormats.Bgr24,
+            4 => PixelFormats.Bgra32,
+            _ => throw new NotSupportedException($"Ảnh {mat.Channels()} kênh chưa được hỗ trợ."),
+        };
 
-        try
-        {
-            var bitmap = new WriteableBitmap(
-                new PixelSize(bgra.Width, bgra.Height),
-                new Vector(96, 96),
-                PixelFormat.Bgra8888,
-                AlphaFormat.Opaque);
+        var stride = (int)mat.Step(); // số byte mỗi dòng (có thể > width*channels vì padding)
+        var bitmap = BitmapSource.Create(
+            mat.Width, mat.Height,
+            96, 96,
+            format,
+            null,
+            mat.Data,             // BitmapSource.Create COPY dữ liệu → Mat dispose sau đó vẫn an toàn
+            stride * mat.Height,
+            stride);
 
-            using var buffer = bitmap.Lock();
-
-            // Copy từng dòng vì stride (số byte mỗi dòng) của Mat và Bitmap có thể khác nhau.
-            var srcStride = (int)bgra.Step();
-            var rowBytes = bgra.Width * 4;
-            var src = (byte*)bgra.Data;
-            var dst = (byte*)buffer.Address;
-            for (var y = 0; y < bgra.Height; y++)
-            {
-                Buffer.MemoryCopy(
-                    src + (long)y * srcStride,
-                    dst + (long)y * buffer.RowBytes,
-                    buffer.RowBytes,
-                    rowBytes);
-            }
-
-            return bitmap;
-        }
-        finally
-        {
-            if (ownsBgra)
-                bgra.Dispose();
-        }
+        // Freeze: bitmap thành bất biến — thread nào cũng đọc được, render nhanh hơn.
+        bitmap.Freeze();
+        return bitmap;
     }
 }

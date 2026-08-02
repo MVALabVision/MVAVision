@@ -1,11 +1,13 @@
-using Avalonia.Controls;
-using Avalonia.Platform.Storage;
+using System.Windows;
+using Microsoft.Win32;
 
 namespace MVATool.Services;
 
 /// <summary>
-/// Implementation thật của IFilePickerService, dùng StorageProvider của Avalonia.
+/// Implementation thật của IFilePickerService, dùng dialog của WPF (Microsoft.Win32).
 /// Đây là class DUY NHẤT trong tầng Services được phép đụng tới Window.
+/// Dialog của WPF là API đồng bộ → bọc kết quả trong Task.FromResult để giữ
+/// nguyên interface bất đồng bộ (ViewModel không cần biết khác biệt này).
 /// </summary>
 public class FilePickerService : IFilePickerService
 {
@@ -16,46 +18,38 @@ public class FilePickerService : IFilePickerService
         _owner = owner;
     }
 
-    public async Task<string?> PickImageFileAsync()
+    public Task<string?> PickImageFileAsync()
     {
-        var files = await _owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        var dialog = new OpenFileDialog
         {
             Title = "Chọn ảnh",
-            AllowMultiple = false,
-            FileTypeFilter = new[]
-            {
-                new FilePickerFileType("Ảnh") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp" } },
-            },
-        });
+            Filter = "Ảnh|*.png;*.jpg;*.jpeg;*.bmp|Tất cả file|*.*",
+        };
 
-        return files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        return Task.FromResult(dialog.ShowDialog(_owner) == true ? dialog.FileName : null);
     }
 
-    public async Task<string?> PickSaveFileAsync(string suggestedName)
+    public Task<string?> PickSaveFileAsync(string suggestedName)
     {
-        var file = await _owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        var dialog = new SaveFileDialog
         {
             Title = "Lưu ảnh kết quả",
-            SuggestedFileName = suggestedName,
-            DefaultExtension = "png",
-            FileTypeChoices = new[]
-            {
-                new FilePickerFileType("PNG") { Patterns = new[] { "*.png" } },
-                new FilePickerFileType("JPEG") { Patterns = new[] { "*.jpg" } },
-            },
-        });
+            FileName = suggestedName,
+            DefaultExt = ".png",
+            Filter = "PNG|*.png|JPEG|*.jpg",
+        };
 
-        return file?.TryGetLocalPath();
+        return Task.FromResult(dialog.ShowDialog(_owner) == true ? dialog.FileName : null);
     }
 
-    public async Task<string?> PickFolderAsync()
+    public Task<string?> PickFolderAsync()
     {
-        var folders = await _owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        // OpenFolderDialog có từ .NET 8 — trước đó WPF phải mượn WinForms.
+        var dialog = new OpenFolderDialog
         {
             Title = "Chọn thư mục ảnh",
-            AllowMultiple = false,
-        });
+        };
 
-        return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
+        return Task.FromResult(dialog.ShowDialog(_owner) == true ? dialog.FolderName : null);
     }
 }

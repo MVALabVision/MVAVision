@@ -1,6 +1,6 @@
-using Avalonia;
 using MVATool.Core;
 using MVATool.ViewModels;
+using OpenCvSharp;
 using Xunit;
 
 namespace MVATool.Tests;
@@ -31,7 +31,7 @@ public class ImageEditingTests
         var viewModel = await CreateViewModelWithImageAsync();
         viewModel.IsCropMode = true;
 
-        viewModel.ApplyCropCommand.Execute(new PixelRect(2, 2, 8, 4));
+        viewModel.ApplyCropCommand.Execute(new Rect(2, 2, 8, 4));
 
         Assert.Contains("8 × 4", viewModel.ImageInfo);
         Assert.False(viewModel.IsCropMode); // cắt xong phải tự thoát chế độ cắt
@@ -43,7 +43,7 @@ public class ImageEditingTests
         var viewModel = await CreateViewModelWithImageAsync();
 
         // Vùng 100x100 tại (10,10) trên ảnh 16x12 → phải kẹp còn 6 × 2
-        viewModel.ApplyCropCommand.Execute(new PixelRect(10, 10, 100, 100));
+        viewModel.ApplyCropCommand.Execute(new Rect(10, 10, 100, 100));
 
         Assert.Contains("6 × 2", viewModel.ImageInfo);
     }
@@ -64,7 +64,7 @@ public class ImageEditingTests
     {
         var viewModel = await CreateViewModelWithImageAsync();
 
-        viewModel.ApplyCropCommand.Execute(new PixelRect(0, 0, 5, 5));
+        viewModel.ApplyCropCommand.Execute(new Rect(0, 0, 5, 5));
         viewModel.RotateRightCommand.Execute(null);
         Assert.DoesNotContain("16 × 12", viewModel.ImageInfo);
 
@@ -78,7 +78,7 @@ public class ImageEditingTests
     {
         var viewModel = await CreateViewModelWithImageAsync();
 
-        viewModel.HoverOriginalPixelCommand.Execute(new PixelPoint(3, 4));
+        viewModel.HoverOriginalPixelCommand.Execute(new Point(3, 4));
 
         Assert.Contains("(3, 4)", viewModel.PixelInfo);
         // Scalar(30, 60, 90) theo thứ tự BGR của OpenCV → R=90 G=60 B=30
@@ -91,7 +91,7 @@ public class ImageEditingTests
     {
         var viewModel = await CreateViewModelWithImageAsync();
 
-        viewModel.HoverOriginalPixelCommand.Execute(new PixelPoint(3, 4));
+        viewModel.HoverOriginalPixelCommand.Execute(new Point(3, 4));
         Assert.NotEqual("", viewModel.PixelInfo);
 
         viewModel.HoverOriginalPixelCommand.Execute(null);

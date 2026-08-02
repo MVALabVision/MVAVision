@@ -7,7 +7,7 @@ namespace MVATool.Tests;
 
 /// <summary>
 /// Test tầng thuật toán: chạy được KHÔNG CẦN mở app, không cần UI —
-/// vì MVATool.Core không phụ thuộc Avalonia.
+/// vì MVATool.Core không phụ thuộc WPF.
 /// </summary>
 public class ProcessorTests
 {

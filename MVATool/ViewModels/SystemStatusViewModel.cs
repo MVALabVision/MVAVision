@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
-using Avalonia.Threading;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using MVATool.Services;
 
@@ -20,7 +20,7 @@ public partial class SystemStatusViewModel : ObservableObject
     private static readonly CultureInfo Vietnamese = new("vi-VN");
 
     private readonly ISystemInfoService _systemInfo;
-    private IDisposable? _timer;
+    private DispatcherTimer? _timer;
 
     public SystemStatusViewModel(ISystemInfoService systemInfo)
     {
@@ -56,11 +56,12 @@ public partial class SystemStatusViewModel : ObservableObject
             return;
 
         Refresh();
-        _timer = DispatcherTimer.Run(() =>
+        _timer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Refresh();
-            return true; // true = tiếp tục lặp
-        }, TimeSpan.FromSeconds(1));
+            Interval = TimeSpan.FromSeconds(1),
+        };
+        _timer.Tick += (_, _) => Refresh();
+        _timer.Start();
     }
 
     /// <summary>Đo một lần rồi đổ số liệu vào các property. Public để test gọi thẳng.</summary>

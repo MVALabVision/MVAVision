@@ -1,8 +1,8 @@
 # MVAVision — Machine Vision Suite
 
-Project luyện tập **Avalonia + MVVM**, đồng thời là nền để **tích hợp thuật toán
-machine vision (OpenCV)**. Kiến trúc là bản rút gọn của VisionPlatform: cùng stack
-(Avalonia, CommunityToolkit.Mvvm, OpenCvSharp), cùng tư tưởng tách tầng.
+Project luyện tập **WPF + MVVM**, đồng thời là nền để **tích hợp thuật toán
+machine vision (OpenCV)**. Kiến trúc là bản rút gọn của VisionPlatform:
+cùng stack MVVM (WPF, CommunityToolkit.Mvvm, OpenCvSharp), cùng tư tưởng tách tầng.
 
 Giao diện theo phong cách **tool công nghiệp**: logo MVA, đèn LED trạng thái
 (SẴN SÀNG / ĐANG XỬ LÝ / BATCH), đồng hồ hệ thống, và khối **giám sát tài nguyên**
@@ -10,7 +10,8 @@ Giao diện theo phong cách **tool công nghiệp**: logo MVA, đèn LED trạn
 
 ## Ứng dụng làm được gì
 
-- Mở ảnh (nút, `Ctrl+O`, hoặc **kéo thả file vào cửa sổ**).
+- Mở ảnh (nút, `Ctrl+O`, **kéo thả file vào cửa sổ**, hoặc truyền đường dẫn
+  qua dòng lệnh: `MVATool.exe C:\anh\mau.png`).
 - **Mở cả thư mục ảnh**: danh sách file hiện ở panel trái, click file nào xem file đó,
   điều hướng ◀ ▶, và **▶▶ chạy pipeline lần lượt với từng ảnh** (dừng được giữa chừng
   bằng nút ⏹); tùy chọn lưu kết quả từng ảnh vào thư mục con `ket-qua`.
@@ -53,15 +54,16 @@ MVATOOL/
 │   └── Processors/                #    Grayscale, Invert, GaussianBlur, Threshold,
 │                                  #    CannyEdge + BlobCount (bài tập)
 │
-├── MVATool/                       # APP AVALONIA
-│   ├── App.axaml.cs               #    composition root — DI container thật (MS.Extensions.DI)
+├── MVATool/                       # APP WPF
+│   ├── App.xaml.cs                #    composition root — DI container thật (MS.Extensions.DI)
+│   ├── Themes/                    #    bảng màu công nghiệp Dark/Light (hoán đổi lúc chạy)
 │   ├── Models/LogEntry.cs         #    MODEL: dữ liệu thuần
 │   ├── ViewModels/                #    VIEWMODEL: MainWindowViewModel + PipelineStepViewModel
-│   ├── Views/MainWindow.axaml     #    VIEW: chỉ XAML + binding; code-behind chỉ có
+│   ├── Views/MainWindow.xaml      #    VIEW: chỉ XAML + binding; code-behind chỉ có
 │   │                              #    drag-drop & đổi theme (ngoại lệ hợp lệ, có giải thích)
 │   ├── Views/Controls/            #    CUSTOM CONTROL: ImageViewer — zoom/pan/crop/đọc pixel,
-│   │                              #    giao tiếp với ViewModel qua StyledProperty + ICommand
-│   └── Services/                  #    SERVICE: FilePicker (dialog), ImageService (Mat↔Bitmap),
+│   │                              #    giao tiếp với ViewModel qua DependencyProperty + ICommand
+│   └── Services/                  #    SERVICE: FilePicker (dialog), ImageService (Mat↔BitmapSource),
 │                                  #    SystemInfoService (CPU/RAM/ổ đĩa — P/Invoke Windows API)
 │
 └── MVATool.Tests/                 # UNIT TEST — chứng minh lợi ích lớn nhất của MVVM:
@@ -70,8 +72,8 @@ MVATOOL/
     └── MainWindowViewModelTests.cs#    test hành vi UI không cần cửa sổ nào
 ```
 
-**Quy tắc vàng:** `MVATool.Core` không được tham chiếu Avalonia. ViewModel không được
-`using Avalonia.Controls`. View không chứa logic nghiệp vụ.
+**Quy tắc vàng:** `MVATool.Core` không được tham chiếu WPF. ViewModel không được
+`using System.Windows.Controls`. View không chứa logic nghiệp vụ.
 
 ## Các khái niệm MVVM xuất hiện ở đâu
 
@@ -82,26 +84,25 @@ MVATOOL/
 | `[NotifyCanExecuteChangedFor]` | property `IsBusy` — đổi là 3 nút tự cập nhật |
 | `[NotifyPropertyChangedFor]` (property phụ thuộc) | `NumberParameter.Value` → `DisplayText` |
 | Command có THAM SỐ (`CommandParameter`) | nút ↑ ↓ ✕ của từng bước pipeline |
-| Binding thoát khỏi DataTemplate (`$parent[Window]`) | `MainWindow.axaml`, phần step card |
-| DataTemplate **ngầm định theo kiểu dữ liệu** | `Window.DataTemplates` — Slider cho NumberParameter |
+| Binding thoát khỏi DataTemplate (`RelativeSource AncestorType=Window`) | `MainWindow.xaml`, phần step card |
+| DataTemplate **ngầm định theo kiểu dữ liệu** | `Window.Resources` — Slider cho NumberParameter |
 | `ObservableCollection` | `Pipeline`, `History` |
-| Converter có sẵn (`ObjectConverters.IsNull`) | dòng gợi ý khi chưa có ảnh |
-| Binding phủ định (`!Pipeline.Count`) | dòng gợi ý khi pipeline rỗng |
+| `IValueConverter` tự viết (null / 0 / phủ định → Visibility) | `Converters.cs` — dòng gợi ý khi chưa có ảnh / pipeline rỗng |
 | `KeyBinding` gọi command | `Ctrl+O`, `Ctrl+S`, `F5` |
 | Async command + `IsBusy` + `Task.Run` | `RunPipelineAsync` — xử lý nặng không đơ UI |
 | **Hủy tác vụ dài**: `CancellationToken` + `IncludeCancelCommand` | `RunFolderAsync` — nút ⏹ Dừng bind vào `RunFolderCancelCommand` |
 | Selection-driven: bind `SelectedItem`, phản ứng trong hook | `OnSelectedImageFileChanged` — chọn file là load, không cần Click event |
 | Coalescing (dồn yêu cầu chạy lại) | `TriggerAutoRun` + `_rerunRequested` |
 | Partial method hook của toolkit | `OnIsAutoRunEnabledChanged`, `OnIsEnabledChanged` |
-| DI container + constructor injection | `App.axaml.cs` (composition root) |
-| Code-behind "hợp lệ" (drag-drop, theme) | `MainWindow.axaml.cs` — đọc comment đầu file |
-| **Custom control** với `StyledProperty` | `Views/Controls/ImageViewer` — Source, IsCropEnabled |
+| DI container + constructor injection | `App.xaml.cs` (composition root) |
+| Code-behind "hợp lệ" (drag-drop, theme) | `MainWindow.xaml.cs` — đọc comment đầu file |
+| **Custom control** với `DependencyProperty` | `Views/Controls/ImageViewer` — Source, IsCropEnabled |
 | Control trả kết quả qua `ICommand` property | `ImageViewer` — `CropCommand`, `PixelHoverCommand` |
-| Ma trận biến đổi 2D (zoom quanh 1 điểm, nghịch đảo để đổi hệ tọa độ) | `ImageViewer.axaml.cs` — `ZoomAround`, `ToPixel` |
+| Ma trận biến đổi 2D (zoom quanh 1 điểm, nghịch đảo để đổi hệ tọa độ) | `ImageViewer.xaml.cs` — `ZoomAround`, `ToPixel` |
 | Child-ViewModel (tách mảng chức năng riêng) | `SystemStatusViewModel` — View bind `{Binding SystemStatus.CpuText}` |
 | Property TÍNH TOÁN + `[NotifyPropertyChangedFor]` | `SystemStateText` — đèn LED đổi theo `IsBusy`/`IsBatchRunning` |
-| Style class động (`Classes.xxx="{Binding}"`) | đèn LED `.busy`/`.batch`, thanh đo `.hot` khi quá tải |
-| ThemeDictionaries (bảng màu đổi theo theme) | `App.axaml` — bộ màu công nghiệp `MvaXxx` |
+| `DataTrigger` + `Storyboard` (style phản ứng theo trạng thái) | đèn LED đổi màu + nhấp nháy, thanh đo chuyển đỏ khi quá tải |
+| Đổi theme lúc chạy (hoán đổi `ResourceDictionary`) | `Themes/Dark.xaml` ↔ `Light.xaml` — bộ màu công nghiệp `MvaXxx` |
 | Unit test ViewModel bằng fake service | `MVATool.Tests` |
 
 ## Tích hợp thuật toán machine vision như thế nào?
@@ -140,7 +141,7 @@ Không phải sửa ViewModel, không phải sửa XAML.
    nút Chạy biến thành nút Hủy khi `IsBusy` (xem `AsyncRelayCommand` cancel support).
 6. **Lưu / mở pipeline** — serialize danh sách bước + giá trị tham số ra JSON
    (`System.Text.Json`), mở lại thành pipeline y hệt.
-7. **Đồng bộ 2 viewer** — thêm `StyledProperty<Matrix> ViewMatrix` (TwoWay) vào
+7. **Đồng bộ 2 viewer** — thêm `DependencyProperty` kiểu `Matrix` (TwoWay) vào
    `ImageViewer`, bind cả 2 viewer vào cùng một property của ViewModel →
    pan/zoom bên này, bên kia đi theo (rất tiện khi so sánh trước/sau).
 8. **Kính lúp** — khi giữ `Ctrl`, hiện ô phóng to 8× vùng quanh con trỏ kèm lưới
@@ -158,7 +159,10 @@ Không phải sửa ViewModel, không phải sửa XAML.
 
 - Trình tự dạy gợi ý: `GrayscaleProcessor` (interface + catalog) → `GaussianBlurProcessor`
   (parameter + binding) → `MainWindowViewModel` (command, CanExecute, async) →
-  `MainWindow.axaml` (DataTemplate, `$parent` binding) → `App.axaml.cs` (DI) → Tests.
-- `ImageService.ToBitmap` dùng `WriteableBitmap` copy pixel trực tiếp (unsafe) —
-  nhanh hơn encode PNG trung gian rất nhiều, đáng để giải thích cho học viên về stride.
+  `MainWindow.xaml` (DataTemplate, `RelativeSource` binding) → `App.xaml.cs` (DI) → Tests.
+- `ImageService.ToBitmap` dùng `BitmapSource.Create` đọc thẳng buffer của Mat
+  (không encode PNG trung gian) — layout pixel Gray8/BGR24/BGRA32 của OpenCV trùng
+  khớp `PixelFormats` của WPF, đáng để giải thích cho học viên về stride.
+- Lưu ý SDK: khi bật `UseWPF`, implicit usings **không còn `System.IO`** —
+  các file dùng `Path`/`Directory`/`DriveInfo` phải `using System.IO;` tường minh.
 - Khi học viên nắm vững project này, đọc code VisionPlatform sẽ dễ hơn nhiều.

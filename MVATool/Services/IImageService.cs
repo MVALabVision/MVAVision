@@ -1,11 +1,11 @@
-using Avalonia.Media.Imaging;
+using System.Windows.Media.Imaging;
 using OpenCvSharp;
 
 namespace MVATool.Services;
 
 /// <summary>
-/// SERVICE: cầu nối giữa dữ liệu ảnh OpenCV (Mat) và UI Avalonia (Bitmap).
-/// ViewModel giữ ảnh dưới dạng Mat để xử lý, và chỉ convert sang Bitmap khi cần hiển thị.
+/// SERVICE: cầu nối giữa dữ liệu ảnh OpenCV (Mat) và UI WPF (BitmapSource).
+/// ViewModel giữ ảnh dưới dạng Mat để xử lý, và chỉ convert sang BitmapSource khi cần hiển thị.
 /// </summary>
 public interface IImageService
 {
@@ -18,6 +18,6 @@ public interface IImageService
     /// <summary>Liệt kê các file ảnh trong một thư mục (png/jpg/jpeg/bmp), sắp theo tên.</summary>
     IReadOnlyList<string> ListImageFiles(string folder);
 
-    /// <summary>Chuyển Mat thành Bitmap để control Image của Avalonia hiển thị.</summary>
-    Bitmap ToBitmap(Mat mat);
+    /// <summary>Chuyển Mat thành BitmapSource để control Image của WPF hiển thị.</summary>
+    BitmapSource ToBitmap(Mat mat);
 }

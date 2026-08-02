@@ -1,4 +1,4 @@
-using Avalonia.Media.Imaging;
+using System.Windows.Media.Imaging;
 using MVATool.Services;
 using OpenCvSharp;
 
@@ -31,8 +31,8 @@ public class FakeImageService : IImageService
 
     public void Save(Mat mat, string path) => SavedPaths.Add(path);
 
-    // Bitmap của Avalonia cần platform UI khởi tạo — unit test không có UI nên trả null.
-    public Bitmap ToBitmap(Mat mat) => null!;
+    // BitmapSource thật cần UI thread của WPF — unit test không có UI nên trả null.
+    public BitmapSource ToBitmap(Mat mat) => null!;
 
     /// <summary>Giả lập nội dung thư mục — test tự điền danh sách file vào đây.</summary>
     public List<string> FolderFiles { get; } = new();

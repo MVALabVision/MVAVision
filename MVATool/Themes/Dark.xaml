@@ -1,0 +1,17 @@
+<!-- Theme TỐI: phong cách HMI công nghiệp — nền than chì, nhấn cyan.
+     Cùng bộ key với Light.xaml; App đổi theme bằng cách thay dictionary này. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="MvaWindowBrush" Color="#0C1218" />
+    <SolidColorBrush x:Key="MvaHeaderBrush" Color="#111A23" />
+    <SolidColorBrush x:Key="MvaPanelBrush" Color="#141D27" />
+    <SolidColorBrush x:Key="MvaPanelAltBrush" Color="#1A2532" />
+    <SolidColorBrush x:Key="MvaBorderBrush" Color="#28374A" />
+    <SolidColorBrush x:Key="MvaViewportBrush" Color="#080D12" />
+    <SolidColorBrush x:Key="MvaAccentBrush" Color="#00C2E8" />
+    <SolidColorBrush x:Key="MvaTextBrush" Color="#E8EEF4" />
+    <SolidColorBrush x:Key="MvaTextMutedBrush" Color="#7E93A8" />
+    <SolidColorBrush x:Key="MvaSelectionBrush" Color="#3300C2E8" />
+
+</ResourceDictionary>

@@ -8,7 +8,7 @@
 
     <!--
         TẦNG THUẬT TOÁN (domain layer) — giống vai trò của VisionPlatform.Lib.
-        Chú ý: KHÔNG có package UI nào ở đây (không Avalonia). Nhờ vậy:
+        Chú ý: KHÔNG có package UI nào ở đây (không WPF). Nhờ vậy:
           - thuật toán có thể unit test mà không cần mở app,
           - có thể tái sử dụng cho app khác (console, web...).
     -->

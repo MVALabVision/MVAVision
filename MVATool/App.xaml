@@ -1,0 +1,43 @@
+<Application x:Class="MVATool.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:MVATool">
+
+    <!--
+        KHÔNG có StartupUri — cửa sổ chính được tạo trong App.xaml.cs (OnStartup)
+        vì đó là composition root: nơi lắp ráp DI container rồi gán DataContext.
+    -->
+
+    <Application.Resources>
+        <ResourceDictionary>
+
+            <ResourceDictionary.MergedDictionaries>
+                <!--
+                    BẢNG MÀU CÔNG NGHIỆP: vị trí [0] là theme hiện hành.
+                    Nút 🌓 đổi theme = thay dictionary ở vị trí này (Dark ↔ Light);
+                    mọi {DynamicResource MvaXxx} trên UI tự cập nhật theo.
+                -->
+                <ResourceDictionary Source="Themes/Dark.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Màu đèn LED trạng thái — chuẩn tín hiệu máy móc, giống nhau ở cả 2 theme -->
+            <SolidColorBrush x:Key="MvaOkBrush" Color="#2ECC71" />
+            <SolidColorBrush x:Key="MvaBusyBrush" Color="#F5A623" />
+            <SolidColorBrush x:Key="MvaDangerBrush" Color="#E8503A" />
+
+            <!-- Font số liệu kỹ thuật (tọa độ pixel, đồng hồ, thông số hệ thống) -->
+            <FontFamily x:Key="MvaMonoFont">Consolas, Cascadia Mono, Courier New</FontFamily>
+
+            <!--
+                WPF không có binding phủ định (!x) hay ObjectConverters sẵn như
+                Avalonia → khai báo converter dùng chung ở đây.
+            -->
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <local:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
+            <local:NullToVisibleConverter x:Key="NullToVis" />
+            <local:ZeroToVisibleConverter x:Key="ZeroToVis" />
+
+        </ResourceDictionary>
+    </Application.Resources>
+
+</Application>

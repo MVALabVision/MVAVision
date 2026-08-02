@@ -1,3 +1,6 @@
+// SDK của WPF loại System.IO khỏi implicit usings → phải khai báo tường minh.
+using System.IO;
+
 namespace MVATool.Models;
 
 /// <summary>

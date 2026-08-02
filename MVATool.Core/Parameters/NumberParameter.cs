@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace MVATool.Core.Parameters;
 
 /// <summary>
-/// Tham số dạng số — UI hiển thị bằng Slider (xem DataTemplate trong MainWindow.axaml).
+/// Tham số dạng số — UI hiển thị bằng Slider (xem DataTemplate trong MainWindow.xaml).
 /// </summary>
 public partial class NumberParameter : ProcessorParameter
 {
