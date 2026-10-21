@@ -19,6 +19,10 @@ public class FakeFilePickerService : IFilePickerService
     public Task<string?> PickSaveFileAsync(string suggestedName) => Task.FromResult(PathToReturn);
 
     public Task<string?> PickFolderAsync() => Task.FromResult(PathToReturn);
+
+    public Task<string?> PickJobOpenFileAsync() => Task.FromResult(PathToReturn);
+
+    public Task<string?> PickJobSaveFileAsync(string suggestedName) => Task.FromResult(PathToReturn);
 }
 
 public class FakeImageService : IImageService

@@ -26,8 +26,8 @@
 
         <Canvas IsHitTestVisible="False">
             <Rectangle x:Name="PartSelection" Visibility="Collapsed"
-                       Stroke="#FF00C2E8" StrokeThickness="1.5"
-                       StrokeDashArray="4 3" Fill="#3000C2E8" />
+                       Stroke="#FFD4AF37" StrokeThickness="1.5"
+                       StrokeDashArray="4 3" Fill="#30D4AF37" />
         </Canvas>
 
         <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="6"

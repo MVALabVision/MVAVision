@@ -5,6 +5,7 @@ using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MVATool.Core;
+using MVATool.Core.Pipeline;
 using MVATool.Models;
 using MVATool.Services;
 using OpenCvSharp;
@@ -33,6 +34,12 @@ public partial class MainWindowViewModel : ObservableObject
     // chạy, ta không chạy chồng lên mà ghi nhớ để chạy lại ngay khi xong.
     private bool _rerunRequested;
 
+    // Chạy pipeline + giữ đầu ra "Ảnh gốc" (một instance duy nhất để các mối nối tới nó không mất).
+    private readonly PipelineRunner _runner = new();
+
+    // Danh mục tool — cần khi mở file job (dựng lại tool theo Id).
+    private readonly IProcessorCatalog _catalog;
+
     public MainWindowViewModel(
         IFilePickerService filePicker,
         IImageService imageService,
@@ -41,8 +48,10 @@ public partial class MainWindowViewModel : ObservableObject
     {
         _filePicker = filePicker;
         _imageService = imageService;
+        _catalog = catalog;
         SystemStatus = systemStatus;
         AvailableProcessors = catalog.Available;
+        SourceTerminal = new OutputTerminalViewModel(null, _runner.Source);
         SelectedProcessorInfo = AvailableProcessors.FirstOrDefault();
     }
 
@@ -343,6 +352,7 @@ public partial class MainWindowViewModel : ObservableObject
         var step = new PipelineStepViewModel(SelectedProcessorInfo!.Create());
         step.SettingsChanged += OnStepSettingsChanged;
         Pipeline.Add(step);
+        RefreshLinks();
         StatusMessage = $"Đã thêm bước: {step.Name}";
         TriggerAutoRun();
     }
@@ -352,6 +362,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         step.SettingsChanged -= OnStepSettingsChanged;
         Pipeline.Remove(step);
+        RefreshLinks();
         TriggerAutoRun();
     }
 
@@ -362,6 +373,7 @@ public partial class MainWindowViewModel : ObservableObject
         if (index > 0)
         {
             Pipeline.Move(index, index - 1);
+            RefreshLinks();
             TriggerAutoRun();
         }
     }
@@ -373,6 +385,7 @@ public partial class MainWindowViewModel : ObservableObject
         if (index >= 0 && index < Pipeline.Count - 1)
         {
             Pipeline.Move(index, index + 1);
+            RefreshLinks();
             TriggerAutoRun();
         }
     }
@@ -384,6 +397,166 @@ public partial class MainWindowViewModel : ObservableObject
             step.SettingsChanged -= OnStepSettingsChanged;
         Pipeline.Clear();
         TriggerAutoRun();
+    }
+
+    // ===== Lưu / mở job =====
+
+    /// <summary>Đường dẫn file job đang làm việc — lần lưu sau gợi ý luôn tên này.</summary>
+    private string? _jobPath;
+
+    [RelayCommand]
+    private async Task SaveJobAsync()
+    {
+        var suggested = _jobPath is null ? "job" + JobSerializer.FileExtension : Path.GetFileName(_jobPath);
+        var path = await _filePicker.PickJobSaveFileAsync(suggested);
+        if (path is null)
+            return;
+
+        try
+        {
+            var json = JobSerializer.Save(Pipeline.Select(s => s.Node).ToList(), _runner.Source);
+            await File.WriteAllTextAsync(path, json);
+            _jobPath = path;
+            StatusMessage = $"Đã lưu job ({Pipeline.Count} tool): {path}";
+            History.Insert(0, new LogEntry { Operation = $"Lưu job {Path.GetFileName(path)}" });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Lỗi khi lưu job: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenJobAsync()
+    {
+        var path = await _filePicker.PickJobOpenFileAsync();
+        if (path is not null)
+            await LoadJobAsync(path);
+    }
+
+    /// <summary>Public để mở job từ dòng lệnh / kéo thả file .mvajob.</summary>
+    public async Task LoadJobAsync(string path)
+    {
+        JobLoadResult result;
+        try
+        {
+            var json = await File.ReadAllTextAsync(path);
+            result = JobSerializer.Load(json, _catalog, _runner.Source);
+        }
+        catch (Exception ex)
+        {
+            // File hỏng / không đọc được → giữ nguyên job đang có.
+            StatusMessage = $"Không mở được job: {ex.Message}";
+            return;
+        }
+
+        // Tắt auto-run trong lúc dựng lại, để không chạy job dở dang sau mỗi tool được thêm vào.
+        var autoRun = IsAutoRunEnabled;
+        IsAutoRunEnabled = false;
+
+        ClearPipeline();
+        foreach (var node in result.Nodes)
+        {
+            var step = new PipelineStepViewModel(node);
+            step.SettingsChanged += OnStepSettingsChanged;
+            Pipeline.Add(step);
+        }
+        RefreshLinks();
+        _jobPath = path;
+
+        History.Insert(0, new LogEntry { Operation = $"Mở job {Path.GetFileName(path)}" });
+        StatusMessage = result.Warnings.Count == 0
+            ? $"Đã mở job {Path.GetFileName(path)}: {Pipeline.Count} tool."
+            : $"Đã mở job với {result.Warnings.Count} cảnh báo: {string.Join(" | ", result.Warnings)}";
+
+        IsAutoRunEnabled = autoRun; // bật lại → hook OnIsAutoRunEnabledChanged tự chạy 1 lần
+    }
+
+    /// <summary>Terminal "Ảnh gốc" — vẽ ở đầu job, tool nào cũng nối được vào.</summary>
+    public OutputTerminalViewModel SourceTerminal { get; }
+
+    /// <summary>
+    /// Nối dây: View gọi khi người dùng kéo từ một chấm O thả vào chấm O khác.
+    /// Chiều kéo nào cũng được — ở đây tự xác định đâu là terminal ra, đâu là vào.
+    /// </summary>
+    [RelayCommand]
+    private void Connect(TerminalPair pair)
+    {
+        var (output, input) = (pair.From, pair.To) switch
+        {
+            (OutputTerminalViewModel o, InputTerminalViewModel i) => (o, i),
+            (InputTerminalViewModel i, OutputTerminalViewModel o) => (o, i),
+            _ => (null, null),
+        };
+
+        if (output is null || input is null)
+        {
+            StatusMessage = "Chỉ nối được từ terminal RA (chấm đặc) tới terminal VÀO (chấm rỗng).";
+            return;
+        }
+
+        if (!input.IsLinkable || output.DataType != input.DataType)
+        {
+            StatusMessage = $"Khác kiểu: '{output.Output.Name}' là {output.TypeName}, "
+                            + $"'{input.Parameter.Name}' cần {input.TypeName}.";
+            return;
+        }
+
+        // Job chạy từ trên xuống → chỉ nối được tới tool ĐỨNG TRƯỚC (Ảnh gốc luôn đứng trước).
+        if (output.Step is not null && Pipeline.IndexOf(output.Step) >= Pipeline.IndexOf(input.Step))
+        {
+            StatusMessage = "Chỉ nối được từ tool đứng TRƯỚC xuống tool đứng sau (job chạy từ trên xuống).";
+            return;
+        }
+
+        input.Parameter.Source = output.Output;
+        RefreshLinks();
+        StatusMessage = $"Đã nối {output.Label} → {input.Step.Title} › {input.Parameter.Name}";
+    }
+
+    /// <summary>Cắt dây đang nối vào terminal này (View gọi khi chuột phải vào chấm O).</summary>
+    [RelayCommand]
+    private void Disconnect(InputTerminalViewModel input)
+    {
+        if (!input.Parameter.IsLinked)
+            return;
+
+        input.Parameter.Source = null;
+        RefreshLinks();
+        StatusMessage = $"Đã cắt dây vào {input.Step.Title} › {input.Parameter.Name}";
+    }
+
+    /// <summary>
+    /// Đánh lại số thứ tự và kiểm tra lại mọi dây nối: tool thứ i chỉ được nối tới
+    /// Ảnh gốc + terminal ra của các tool 1..i-1. Dây nào trỏ tới tool đã bị xóa
+    /// hoặc đã bị chuyển xuống dưới sẽ tự bị cắt.
+    /// </summary>
+    private void RefreshLinks()
+    {
+        var available = new Dictionary<ToolOutput, OutputTerminalViewModel>
+        {
+            [SourceTerminal.Output] = SourceTerminal,
+        };
+
+        for (var i = 0; i < Pipeline.Count; i++)
+        {
+            var step = Pipeline[i];
+            step.Number = i + 1;
+
+            foreach (var input in step.Inputs)
+            {
+                var source = input.Parameter.Source;
+                if (source is not null && !available.ContainsKey(source))
+                {
+                    input.Parameter.Source = null;
+                    source = null;
+                }
+                input.SourceLabel = source is null ? "" : available[source].Label;
+            }
+
+            foreach (var output in step.Outputs)
+                available[output.Output] = output;
+        }
     }
 
     // ===== Chạy pipeline =====
@@ -399,7 +572,9 @@ public partial class MainWindowViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            var steps = Pipeline.Where(s => s.IsEnabled).ToList();
+            var steps = Pipeline.ToList();
+            var nodes = steps.Select(s => s.Node).ToList();
+            var enabledCount = steps.Count(s => s.IsEnabled);
 
             // Clone TRÊN UI THREAD trước khi vào Task.Run: từ đây background thread
             // chỉ làm việc với bản sao, người dùng có sửa ảnh gốc cũng không sao.
@@ -407,39 +582,25 @@ public partial class MainWindowViewModel : ObservableObject
             var total = Stopwatch.StartNew();
 
             // Task.Run đẩy phần tính toán nặng ra background thread → UI không đơ.
-            var (result, durations) = await Task.Run(() =>
-            {
-                var current = input;
-                var times = new double[steps.Count];
-                for (var i = 0; i < steps.Count; i++)
-                {
-                    var stopwatch = Stopwatch.StartNew();
-                    var next = steps[i].Processor.Process(current);
-                    stopwatch.Stop();
-                    times[i] = stopwatch.Elapsed.TotalMilliseconds;
-
-                    current.Dispose(); // ảnh trung gian không cần nữa
-                    current = next;
-                }
-                return (current, times);
-            });
+            // Runner lo việc chuyền dữ liệu qua các mối nối và Dispose ảnh trung gian.
+            var (result, durations) = await Task.Run(() => _runner.Run(input, nodes));
             total.Stop();
 
             // Từ sau await, code lại chạy trên UI thread → cập nhật property an toàn.
             for (var i = 0; i < steps.Count; i++)
-                steps[i].DurationText = $"{durations[i]:F1} ms";
+                steps[i].DurationText = durations[i] is { } ms ? $"{ms:F1} ms" : "";
 
             _resultMat?.Dispose();
             _resultMat = result;
             ResultImage = _imageService.ToBitmap(result);
-            StatusMessage = $"Pipeline xong: {steps.Count} bước, {total.Elapsed.TotalMilliseconds:F1} ms.";
+            StatusMessage = $"Pipeline xong: {enabledCount} bước, {total.Elapsed.TotalMilliseconds:F1} ms.";
             // Khi chạy hàng loạt, không ghi từng ảnh vào lịch sử (sẽ ngập) —
             // RunFolderAsync ghi MỘT dòng tổng kết khi xong.
             if (!IsBatchRunning)
             {
                 History.Insert(0, new LogEntry
                 {
-                    Operation = $"Pipeline ({steps.Count} bước)",
+                    Operation = $"Pipeline ({enabledCount} bước)",
                     DurationMs = total.Elapsed.TotalMilliseconds,
                 });
             }

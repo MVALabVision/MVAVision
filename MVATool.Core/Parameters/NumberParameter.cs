@@ -30,4 +30,9 @@ public partial class NumberParameter : ProcessorParameter
         Step = step;
         _value = value;
     }
+
+    /// <summary>Nối được vào đầu ra kiểu số (vd: "Độ sáng TB" của bước trước làm ngưỡng).</summary>
+    public override Type? LinkType => typeof(double);
+
+    protected override void Accept(object value) => Value = (double)value;
 }

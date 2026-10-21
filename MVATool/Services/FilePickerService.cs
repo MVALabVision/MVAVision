@@ -52,4 +52,24 @@ public class FilePickerService : IFilePickerService
 
         return Task.FromResult(dialog.ShowDialog(_owner) == true ? dialog.FolderName : null);
     }
+
+    private const string JobFilter = "Job MVAVision (*.mvajob)|*.mvajob|Tất cả file|*.*";
+
+    public Task<string?> PickJobOpenFileAsync()
+    {
+        var dialog = new OpenFileDialog { Title = "Mở job", Filter = JobFilter };
+        return Task.FromResult(dialog.ShowDialog(_owner) == true ? dialog.FileName : null);
+    }
+
+    public Task<string?> PickJobSaveFileAsync(string suggestedName)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Lưu job",
+            FileName = suggestedName,
+            DefaultExt = ".mvajob",
+            Filter = JobFilter,
+        };
+        return Task.FromResult(dialog.ShowDialog(_owner) == true ? dialog.FileName : null);
+    }
 }

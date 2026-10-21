@@ -15,4 +15,10 @@ public interface IFilePickerService
 
     /// <summary>Mở hộp thoại chọn thư mục. Trả về đường dẫn, hoặc null nếu người dùng bấm Cancel.</summary>
     Task<string?> PickFolderAsync();
+
+    /// <summary>Chọn file job (.mvajob) để mở. null nếu bấm Cancel.</summary>
+    Task<string?> PickJobOpenFileAsync();
+
+    /// <summary>Chọn nơi lưu file job (.mvajob). null nếu bấm Cancel.</summary>
+    Task<string?> PickJobSaveFileAsync(string suggestedName);
 }

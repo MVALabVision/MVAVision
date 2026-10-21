@@ -1,16 +1,43 @@
-<!-- Theme SÁNG: cùng bộ key với Dark.xaml, giá trị dịu mắt cho môi trường văn phòng. -->
+<!-- Theme SÁNG: cùng bộ key với Dark.xaml — nền trắng xanh nhạt, chữ navy của logo,
+     gold đậm hơn một chút để vẫn đủ tương phản trên nền sáng. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <SolidColorBrush x:Key="MvaWindowBrush" Color="#E7EBEF" />
-    <SolidColorBrush x:Key="MvaHeaderBrush" Color="#F4F7FA" />
-    <SolidColorBrush x:Key="MvaPanelBrush" Color="#FCFDFE" />
-    <SolidColorBrush x:Key="MvaPanelAltBrush" Color="#ECF1F5" />
-    <SolidColorBrush x:Key="MvaBorderBrush" Color="#C4CFDA" />
-    <SolidColorBrush x:Key="MvaViewportBrush" Color="#D8DEE5" />
-    <SolidColorBrush x:Key="MvaAccentBrush" Color="#007FAD" />
-    <SolidColorBrush x:Key="MvaTextBrush" Color="#16202A" />
-    <SolidColorBrush x:Key="MvaTextMutedBrush" Color="#5B6E80" />
-    <SolidColorBrush x:Key="MvaSelectionBrush" Color="#33007FAD" />
+    <!-- ===== Nền / chữ ===== -->
+    <SolidColorBrush x:Key="MvaWindowBrush" Color="#ECF0F8" />
+    <SolidColorBrush x:Key="MvaHeaderBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="MvaPanelBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="MvaPanelAltBrush" Color="#F2F5FC" />
+    <SolidColorBrush x:Key="MvaBorderBrush" Color="#CAD5EA" />
+    <SolidColorBrush x:Key="MvaViewportBrush" Color="#DCE3F0" />
+    <SolidColorBrush x:Key="MvaTextBrush" Color="#0B1633" />
+    <SolidColorBrush x:Key="MvaTextMutedBrush" Color="#56678E" />
+
+    <!-- ===== Xanh thương hiệu ===== -->
+    <SolidColorBrush x:Key="MvaAccentBrush" Color="#1747D9" />
+    <SolidColorBrush x:Key="MvaSelectionBrush" Color="#241747D9" />
+    <LinearGradientBrush x:Key="MvaBrandGradientBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#1E90FF" Offset="0" />
+        <GradientStop Color="#1747D9" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- ===== Vàng gold ===== -->
+    <SolidColorBrush x:Key="MvaGoldBrush" Color="#B8912F" />
+    <SolidColorBrush x:Key="MvaGoldLightBrush" Color="#D4AF37" />
+    <SolidColorBrush x:Key="MvaGoldSoftBrush" Color="#26B8912F" />
+    <SolidColorBrush x:Key="MvaOnGoldBrush" Color="#1B1404" />
+    <LinearGradientBrush x:Key="MvaGoldGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#F3D98A" Offset="0" />
+        <GradientStop Color="#D4AF37" Offset="0.55" />
+        <GradientStop Color="#A8842A" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="MvaGoldHoverBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FFEBB0" Offset="0" />
+        <GradientStop Color="#E6C251" Offset="0.55" />
+        <GradientStop Color="#BD9634" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Logo chữ: màu gốc (nền trong suốt) -->
+    <BitmapImage x:Key="MvaWordmarkImage" UriSource="pack://application:,,,/Assets/mva-wordmark.png" />
 
 </ResourceDictionary>

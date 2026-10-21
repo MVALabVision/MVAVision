@@ -7,7 +7,15 @@
         <UseWPF>true</UseWPF>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <!-- Icon file .exe (taskbar, Explorer) — logo MVA LAB -->
+        <ApplicationIcon>Assets\mva.ico</ApplicationIcon>
     </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Logo nhúng vào assembly → dùng được qua pack://application:,,,/Assets/... -->
+        <Resource Include="Assets\*.png" />
+        <Resource Include="Assets\mva.ico" />
+    </ItemGroup>
 
     <ItemGroup>
         <!-- MVVM toolkit: ObservableObject, [ObservableProperty], [RelayCommand] -->

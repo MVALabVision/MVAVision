@@ -17,6 +17,8 @@ namespace MVATool.Core.Processors;
 ///        - Cv2.DrawContours với màu đỏ (Scalar(0, 0, 255) — chú ý BGR!)
 ///        - Cv2.PutText ghi số blob đếm được lên góc ảnh.
 ///   5. Trả về ảnh đã vẽ.
+///   6. (Nâng cao) Khai báo đầu ra ToolOutput&lt;double&gt; "Số blob" (xem MeanBrightnessProcessor)
+///      để bước sau nối vào dùng được số blob đếm được.
 /// </summary>
 public class BlobCountProcessor : IImageProcessor
 {

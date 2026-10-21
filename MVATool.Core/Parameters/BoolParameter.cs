@@ -13,4 +13,8 @@ public partial class BoolParameter : ProcessorParameter
     {
         _value = value;
     }
+
+    public override Type? LinkType => typeof(bool);
+
+    protected override void Accept(object value) => Value = (bool)value;
 }

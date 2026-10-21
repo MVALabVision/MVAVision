@@ -33,7 +33,13 @@ public partial class MainWindow : Window
         if (DataContext is not MainWindowViewModel viewModel)
             return;
 
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0)
+            return;
+
+        // File job → mở job; còn lại coi là ảnh.
+        if (files[0].EndsWith(Core.Pipeline.JobSerializer.FileExtension, StringComparison.OrdinalIgnoreCase))
+            await viewModel.LoadJobAsync(files[0]);
+        else
             await viewModel.LoadImageAsync(files[0]);
     }
 

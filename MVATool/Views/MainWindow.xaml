@@ -5,7 +5,8 @@
         xmlns:models="clr-namespace:MVATool.Models"
         xmlns:param="clr-namespace:MVATool.Core.Parameters;assembly=MVATool.Core"
         xmlns:controls="clr-namespace:MVATool.Views.Controls"
-        Title="MVAVision — Machine Vision Suite"
+        Title="MVAVision — Machine Vision Suite · MVA LAB"
+        Icon="/Assets/mva-mark.png"
         Width="1280" Height="760" MinWidth="1050" MinHeight="620"
         WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
@@ -32,6 +33,8 @@
         <KeyBinding Key="O" Modifiers="Ctrl" Command="{Binding OpenImageCommand}" />
         <KeyBinding Key="S" Modifiers="Ctrl" Command="{Binding SaveResultCommand}" />
         <KeyBinding Key="F5" Command="{Binding RunPipelineCommand}" />
+        <KeyBinding Key="O" Modifiers="Ctrl+Shift" Command="{Binding OpenJobCommand}" />
+        <KeyBinding Key="S" Modifiers="Ctrl+Shift" Command="{Binding SaveJobCommand}" />
     </Window.InputBindings>
 
     <Window.Resources>
@@ -86,7 +89,8 @@
             <Setter Property="Height" Value="12" />
             <Setter Property="RadiusX" Value="1.5" />
             <Setter Property="RadiusY" Value="1.5" />
-            <Setter Property="Fill" Value="{DynamicResource MvaAccentBrush}" />
+            <!-- Điểm xuyết GOLD: vạch nhỏ trước mỗi tiêu đề panel -->
+            <Setter Property="Fill" Value="{DynamicResource MvaGoldGradientBrush}" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style x:Key="Tag" TargetType="Border">
@@ -107,6 +111,11 @@
             <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Padding" Value="10,8" />
             <Setter Property="Margin" Value="0,0,0,8" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource MvaGoldSoftBrush}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <!-- ===== Nút =====
@@ -141,11 +150,11 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- Nút CHẠY — màu nhấn, nổi bật nhất màn hình như nút Start trên máy thật -->
+        <!-- Nút CHẠY — GOLD, nổi bật nhất màn hình như nút Start trên máy thật -->
         <Style x:Key="RunButton" TargetType="Button" BasedOn="{StaticResource ToolButton}">
-            <Setter Property="Background" Value="{DynamicResource MvaAccentBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource MvaAccentBrush}" />
-            <Setter Property="Foreground" Value="#06222E" />
+            <Setter Property="Background" Value="{DynamicResource MvaGoldGradientBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MvaGoldLightBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MvaOnGoldBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Padding" Value="16,6" />
             <Setter Property="Template">
@@ -158,10 +167,16 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#33D6FF" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MvaGoldHoverBrush}" />
+                                <!-- Quầng sáng vàng khi rê chuột -->
+                                <Setter TargetName="Bd" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="#D4AF37" BlurRadius="14" ShadowDepth="0" Opacity="0.55" />
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#00A5C6" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MvaGoldBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45" />
@@ -196,9 +211,95 @@
                             </Trigger>
                             <!-- Đang BẬT (ví dụ chế độ cắt) → viền + nền màu nhấn cho dễ nhận ra -->
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#3300C2E8" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MvaSelectionBrush}" />
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource MvaAccentBrush}" />
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--
+            ComboBox mặc định của WPF là hộp trắng kiểu Windows → lạc tông trên nền navy.
+            Template tự vẽ: ô chọn theo màu panel, viền GOLD khi rê chuột / đang mở.
+        -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource MvaTextBrush}" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="3"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MvaSelectionBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource MvaGoldLightBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{DynamicResource MvaTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource MvaPanelBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource MvaBorderBrush}" />
+            <Setter Property="Padding" Value="7,3" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <!-- Cả ô là 1 ToggleButton: bấm vào đâu cũng mở danh sách -->
+                            <ToggleButton x:Name="Toggle" Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Bd" CornerRadius="4" BorderThickness="1"
+                                                Background="{Binding Background, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                BorderBrush="{Binding BorderBrush, RelativeSource={RelativeSource AncestorType=ComboBox}}">
+                                            <Path x:Name="Arrow" Data="M 0,0 L 4,4 L 8,0" Stroke="{DynamicResource MvaTextMutedBrush}"
+                                                  StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                  Margin="0,0,8,0" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource MvaGoldBrush}" />
+                                                <Setter TargetName="Arrow" Property="Stroke" Value="{DynamicResource MvaGoldBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource MvaGoldBrush}" />
+                                                <Setter TargetName="Arrow" Property="Stroke" Value="{DynamicResource MvaGoldBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter Margin="{TemplateBinding Padding}" IsHitTestVisible="False"
+                                              VerticalAlignment="Center" HorizontalAlignment="Left"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom"
+                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                                <Border Background="{DynamicResource MvaPanelAltBrush}" BorderThickness="1"
+                                        BorderBrush="{DynamicResource MvaGoldSoftBrush}" CornerRadius="4" Padding="3"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <ScrollViewer>
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.45" />
                             </Trigger>
@@ -255,7 +356,7 @@
                     <Setter Property="Background" Value="{DynamicResource MvaAccentBrush}" />
                     <Setter Property="Effect">
                         <Setter.Value>
-                            <DropShadowEffect Color="#00C2E8" BlurRadius="9" ShadowDepth="0" Opacity="0.7" />
+                            <DropShadowEffect Color="#3D8BFF" BlurRadius="9" ShadowDepth="0" Opacity="0.7" />
                         </Setter.Value>
                     </Setter>
                     <DataTrigger.EnterActions>
@@ -331,16 +432,23 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter VerticalAlignment="Center" />
-                        </Border>
+                        <Grid>
+                            <Border x:Name="Bd" Background="Transparent" CornerRadius="4"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center" />
+                            </Border>
+                            <!-- Vạch GOLD bên trái mục đang chọn -->
+                            <Rectangle x:Name="GoldBar" Width="3" RadiusX="1.5" RadiusY="1.5" Margin="0,4"
+                                       HorizontalAlignment="Left" Fill="{DynamicResource MvaGoldGradientBrush}"
+                                       Visibility="Collapsed" />
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#1A808080" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource MvaSelectionBrush}" />
+                                <Setter TargetName="GoldBar" Property="Visibility" Value="Visible" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -369,10 +477,15 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                <!-- Đang nối thì giá trị do bước nguồn quyết định → khóa slider (nhưng vẫn thấy giá trị). -->
                 <Slider Grid.Column="1" Margin="6,0"
                         Minimum="{Binding Min}" Maximum="{Binding Max}"
                         TickFrequency="{Binding Step}" IsSnapToTickEnabled="True"
-                        Value="{Binding Value}" VerticalAlignment="Center" />
+                        Value="{Binding Value}" VerticalAlignment="Center"
+                        Visibility="{Binding IsLinked, Converter={StaticResource InvBoolToVis}}" />
+                <TextBlock Grid.Column="1" Margin="6,0" Text="(nối dây)" FontSize="11" Opacity="0.6"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding IsLinked, Converter={StaticResource BoolToVis}}" />
                 <TextBlock Grid.Column="2" Text="{Binding DisplayText}" FontSize="11"
                            FontFamily="{StaticResource MvaMonoFont}"
                            VerticalAlignment="Center" HorizontalAlignment="Right" />
@@ -380,7 +493,98 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type param:BoolParameter}">
             <CheckBox Content="{Binding Name}" IsChecked="{Binding Value}"
-                      FontSize="11" Margin="0,4,0,0" />
+                      FontSize="11" Margin="0,4,0,0">
+                <CheckBox.Style>
+                    <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsLinked}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </CheckBox.Style>
+            </CheckBox>
+        </DataTemplate>
+        <!-- Tham số chọn 1 trong danh sách (vd: phép so sánh ≥ > = ...) -->
+        <DataTemplate DataType="{x:Type param:ChoiceParameter}">
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1" Margin="6,0,0,0" FontSize="11"
+                          ItemsSource="{Binding Options}" SelectedItem="{Binding Value}" />
+            </Grid>
+        </DataTemplate>
+        <!-- Terminal vào thuần (ảnh phụ, contours...) — không nhập tay, chỉ hiện tên. -->
+        <DataTemplate DataType="{x:Type param:InputPort}">
+            <TextBlock Text="{Binding Name}" FontSize="11" Margin="0,4,0,0" />
+        </DataTemplate>
+
+        <controls:TypeToBrushConverter x:Key="TypeToBrush" />
+
+        <!--
+            TERMINAL VÀO:  O  [tham số như cũ: Slider / CheckBox / tên]
+                              ← #2 Tìm contour › Số contour   (nguồn đang nối)
+            Chấm O RỖNG, viền màu theo kiểu dữ liệu. Tag="Terminal" để TerminalWires
+            tìm thấy chấm này mà vẽ dây / bắt kéo-thả.
+        -->
+        <DataTemplate DataType="{x:Type vm:InputTerminalViewModel}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Ellipse Tag="Terminal" Width="11" Height="11" StrokeThickness="2"
+                         VerticalAlignment="Top" HorizontalAlignment="Left" Margin="0,7,0,0"
+                         Fill="{DynamicResource MvaPanelAltBrush}" Cursor="Hand"
+                         Stroke="{Binding DataType, Converter={StaticResource TypeToBrush}}"
+                         Visibility="{Binding IsLinkable, Converter={StaticResource BoolToVis}}">
+                    <Ellipse.ToolTip>
+                        <TextBlock>
+                            <Run Text="Vào:" /> <Run Text="{Binding TypeName, Mode=OneWay}" FontWeight="SemiBold" />
+                            <LineBreak /><Run Text="Kéo tới chấm O đặc (terminal ra) ở tool phía trên để nối." />
+                            <LineBreak /><Run Text="Chuột phải: cắt dây." />
+                        </TextBlock>
+                    </Ellipse.ToolTip>
+                </Ellipse>
+                <StackPanel Grid.Column="1">
+                    <ContentPresenter Content="{Binding Parameter}" />
+                    <TextBlock Text="{Binding HintText}" FontSize="10" Opacity="0.75" Margin="0,1,0,0"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding HintText}"
+                               Foreground="{Binding DataType, Converter={StaticResource TypeToBrush}}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <!-- TERMINAL RA:  ●  Số contour ............ 12   (chấm O ĐẶC) -->
+        <DataTemplate DataType="{x:Type vm:OutputTerminalViewModel}">
+            <Grid Margin="0,3,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Ellipse Tag="Terminal" Width="11" Height="11" Cursor="Hand"
+                         HorizontalAlignment="Left" VerticalAlignment="Center"
+                         Fill="{Binding DataType, Converter={StaticResource TypeToBrush}}">
+                    <Ellipse.ToolTip>
+                        <TextBlock>
+                            <Run Text="Ra:" /> <Run Text="{Binding TypeName, Mode=OneWay}" FontWeight="SemiBold" />
+                            <LineBreak /><Run Text="Kéo tới chấm O rỗng (terminal vào) ở tool phía dưới để nối." />
+                        </TextBlock>
+                    </Ellipse.ToolTip>
+                </Ellipse>
+                <TextBlock Grid.Column="1" FontSize="11" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis">
+                    <Run Text="→" Foreground="{Binding DataType, Converter={StaticResource TypeToBrush}, Mode=OneWay}" />
+                    <Run Text="{Binding Output.Name, Mode=OneWay}" />
+                </TextBlock>
+                <TextBlock Grid.Column="2" Text="{Binding Output.DisplayText}" FontSize="11" Margin="6,0,0,0"
+                           FontFamily="{StaticResource MvaMonoFont}" VerticalAlignment="Center"
+                           Foreground="{DynamicResource MvaAccentBrush}" />
+            </Grid>
         </DataTemplate>
 
     </Window.Resources>
@@ -405,28 +609,31 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Logo MVA: lục giác (đai ốc công nghiệp) vẽ bằng Path — vector nên sắc nét mọi DPI -->
-                    <Grid Width="40" Height="40" VerticalAlignment="Center">
-                        <Path Data="M 20,1 L 37,10.5 L 37,29.5 L 20,39 L 3,29.5 L 3,10.5 Z"
-                              Stroke="{DynamicResource MvaAccentBrush}" StrokeThickness="2"
-                              StrokeLineJoin="Round">
-                            <Path.Fill>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#3D00C2E8" Offset="0" />
-                                    <GradientStop Color="#140066FF" Offset="1" />
-                                </LinearGradientBrush>
-                            </Path.Fill>
-                        </Path>
-                        <TextBlock Text="MVA" FontSize="10" FontWeight="Bold"
-                                   Foreground="{DynamicResource MvaAccentBrush}"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Grid>
+                    <!--
+                        LOGO MVA LAB: biểu tượng trên ô trắng bo góc (giữ đúng màu gốc ở cả 2 theme)
+                        + logo chữ. MvaWordmarkImage khai báo trong theme: bản tối đã đổi phần
+                        chữ đen thành trắng, bản sáng giữ màu gốc → đổi theme là logo đổi theo.
+                    -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="46" Height="46" CornerRadius="10" Background="White" Padding="2"
+                                BorderBrush="{DynamicResource MvaGoldBrush}" BorderThickness="1.5">
+                            <Border.Effect>
+                                <DropShadowEffect Color="#000000" BlurRadius="10" ShadowDepth="1" Opacity="0.35" />
+                            </Border.Effect>
+                            <Image Source="/Assets/mva-mark.png" RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Border>
+                        <Image Source="{DynamicResource MvaWordmarkImage}" Height="40" Margin="14,0,0,0"
+                               RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center" />
+                        <!-- Vạch phân cách gold -->
+                        <Rectangle Width="1.5" Height="34" Margin="16,0" VerticalAlignment="Center"
+                                   Fill="{DynamicResource MvaGoldGradientBrush}" />
+                    </StackPanel>
 
-                    <!-- Tên tool + dòng mô tả -->
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <!-- Tên phần mềm + dòng mô tả -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock FontSize="20" FontWeight="Bold"><Run Text="MVA" Foreground="{DynamicResource MvaAccentBrush}" /><Run Text="Vision" FontWeight="Light" /></TextBlock>
-                        <TextBlock Style="{StaticResource Muted}" Text="M A C H I N E   V I S I O N   S U I T E  ·  v1.0"
-                                   FontSize="9" Margin="1,1,0,0" />
+                        <TextBlock Text="M A C H I N E   V I S I O N   S U I T E  ·  v1.0"
+                                   Foreground="{DynamicResource MvaGoldBrush}" FontSize="9" Margin="1,1,0,0" />
                     </StackPanel>
 
                     <!-- Cụm LED trạng thái: SẴN SÀNG / ĐANG XỬ LÝ / BATCH -->
@@ -446,7 +653,8 @@
                     <!-- Đồng hồ hệ thống — SystemStatusViewModel cập nhật mỗi giây -->
                     <StackPanel Grid.Column="5" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource Mono}" Text="{Binding SystemStatus.ClockText}"
-                                   FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                                   FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Right"
+                                   Foreground="{DynamicResource MvaGoldLightBrush}" />
                         <TextBlock Style="{StaticResource Muted}" Text="{Binding SystemStatus.DateText}"
                                    FontSize="9" HorizontalAlignment="Right" />
                     </StackPanel>
@@ -456,13 +664,14 @@
                             ToolTip="Đổi giao diện sáng / tối" />
                 </Grid>
 
-                <!-- Đường kẻ nhấn dưới header — gradient cyan mờ dần kiểu bảng điều khiển -->
+                <!-- Đường kẻ nhấn dưới header: GOLD → xanh thương hiệu → mờ dần -->
                 <Border Grid.Row="1">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                            <GradientStop Color="#FF00C2E8" Offset="0" />
-                            <GradientStop Color="#5500C2E8" Offset="0.45" />
-                            <GradientStop Color="#0000C2E8" Offset="1" />
+                            <GradientStop Color="#FFF2D47E" Offset="0" />
+                            <GradientStop Color="#FFD4AF37" Offset="0.22" />
+                            <GradientStop Color="#CC3D8BFF" Offset="0.55" />
+                            <GradientStop Color="#003D8BFF" Offset="1" />
                         </LinearGradientBrush>
                     </Border.Background>
                 </Border>
@@ -486,7 +695,7 @@
                         Command="{Binding SaveResultCommand}" ToolTip="Ctrl+S" />
                 <Border Width="1" Height="24" Background="{DynamicResource MvaBorderBrush}"
                         VerticalAlignment="Center" Margin="0,0,8,0" />
-                <Button Style="{StaticResource RunButton}" Content="▶  CHẠY PIPELINE"
+                <Button Style="{StaticResource RunButton}" Content="▶  CHẠY JOB"
                         Command="{Binding RunPipelineCommand}" ToolTip="F5" />
             </StackPanel>
             <CheckBox Grid.Column="2" Content="Tự chạy khi thay đổi" FontSize="12"
@@ -495,7 +704,7 @@
 
         <!-- ══════════════ STATUS BAR ══════════════ -->
         <Border DockPanel.Dock="Bottom" Background="{DynamicResource MvaHeaderBrush}"
-                BorderBrush="{DynamicResource MvaBorderBrush}" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource MvaGoldSoftBrush}" BorderThickness="0,1,0,0"
                 Padding="12,5">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -554,7 +763,7 @@
                     </ListBox>
                     <Button Grid.Row="2" Style="{StaticResource ToolButton}" Margin="10,0,10,10"
                             HorizontalAlignment="Stretch"
-                            Content="＋ Thêm vào pipeline" Command="{Binding AddStepCommand}" />
+                            Content="＋ Thêm vào job" Command="{Binding AddStepCommand}" />
 
                     <Border Grid.Row="3" Style="{StaticResource PanelStrip}"
                             BorderThickness="0,1,0,1" CornerRadius="0">
@@ -685,7 +894,7 @@
             </Border>
 
             <!-- ===== Phải: pipeline + nhật ký ===== -->
-            <Border DockPanel.Dock="Right" Style="{StaticResource PanelBorder}" Width="330" Margin="10,0,0,0">
+            <Border DockPanel.Dock="Right" Style="{StaticResource PanelBorder}" Width="400" Margin="10,0,0,0">
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Style="{StaticResource PanelStrip}">
                         <Grid>
@@ -697,14 +906,22 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal">
                                 <Rectangle Style="{StaticResource AccentTick}" Margin="0,0,8,0" />
-                                <TextBlock Style="{StaticResource PanelHeader}" Text="PIPELINE XỬ LÝ" />
+                                <TextBlock Style="{StaticResource PanelHeader}" Text="JOB EDITOR" />
                             </StackPanel>
                             <Border Grid.Column="1" Style="{StaticResource Tag}" Margin="8,0,0,0">
                                 <TextBlock Style="{StaticResource TagText}"
-                                           Text="{Binding Pipeline.Count, StringFormat={}{0} BƯỚC}" />
+                                           Text="{Binding Pipeline.Count, StringFormat={}{0} TOOL}" />
                             </Border>
-                            <Button Grid.Column="3" Style="{StaticResource TinyButton}" Content="Xóa hết"
-                                    Command="{Binding ClearPipelineCommand}" />
+                            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                <Button Style="{StaticResource TinyButton}" Content="📂 Mở job" Margin="0,0,4,0"
+                                        Command="{Binding OpenJobCommand}"
+                                        ToolTip="Mở job đã lưu (.mvajob) — Ctrl+Shift+O. Kéo thả file .mvajob vào cửa sổ cũng được." />
+                                <Button Style="{StaticResource TinyButton}" Content="💾 Lưu job" Margin="0,0,4,0"
+                                        Command="{Binding SaveJobCommand}"
+                                        ToolTip="Lưu toàn bộ tool, tham số và dây nối ra file .mvajob — Ctrl+Shift+S" />
+                                <Button Style="{StaticResource TinyButton}" Content="Xóa hết"
+                                        Command="{Binding ClearPipelineCommand}" />
+                            </StackPanel>
                         </Grid>
                     </Border>
 
@@ -731,9 +948,23 @@
                         </ListBox>
                     </DockPanel>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
-                        <StackPanel>
-                            <TextBlock Text="Chưa có bước nào — chọn thuật toán bên trái rồi bấm Thêm."
+                    <!--
+                        JOB EDITOR kiểu VisionPro QuickBuild: tool xếp từ trên xuống, mỗi tool liệt kê
+                        terminal vào (O rỗng) và ra (● đặc). Kéo từ chấm này sang chấm kia để nối dây;
+                        dây được TerminalWires vẽ ở lề trái. Margin trái 44 = TerminalWires.GutterWidth.
+                    -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,8,8">
+                        <Grid>
+                        <StackPanel Margin="44,0,0,0">
+                            <!-- Terminal "Ảnh gốc" — nguồn của mọi job -->
+                            <Border Style="{StaticResource StepCard}">
+                                <StackPanel>
+                                    <TextBlock Text="Nguồn ảnh" FontWeight="SemiBold" />
+                                    <ContentPresenter Content="{Binding SourceTerminal}" />
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="Chưa có tool nào — chọn tool bên trái rồi bấm Thêm. Kéo từ chấm ● (ra) tới chấm O (vào) để nối dây."
                                        FontSize="11" Opacity="0.6" TextWrapping="Wrap" Margin="4"
                                        Visibility="{Binding Pipeline.Count, Converter={StaticResource ZeroToVis}}" />
 
@@ -754,7 +985,7 @@
                                                     <CheckBox IsChecked="{Binding IsEnabled}" MinWidth="0" Padding="0"
                                                               VerticalAlignment="Center"
                                                               ToolTip="Bật / tắt bước này" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold"
+                                                    <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold"
                                                                VerticalAlignment="Center" Margin="6,0,0,0"
                                                                TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Grid.Column="2" Style="{StaticResource Mono}"
@@ -777,19 +1008,24 @@
                                                             Command="{Binding DataContext.MoveStepDownCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}" />
                                                     <Button Grid.Column="5" Style="{StaticResource TinyButton}" Content="✕"
-                                                            Margin="4,0,0,0" ToolTip="Xóa bước"
+                                                            Margin="4,0,0,0" ToolTip="Xóa tool"
                                                             Command="{Binding DataContext.RemoveStepCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}" />
                                                 </Grid>
-                                                <!-- Tham số của bước — dùng DataTemplate ngầm định khai báo trong Resources -->
-                                                <ItemsControl ItemsSource="{Binding Parameters}"
-                                                              Visibility="{Binding HasParameters, Converter={StaticResource BoolToVis}}" />
+                                                <!-- Terminal vào rồi terminal ra — DataTemplate ngầm định khai báo trong Resources -->
+                                                <ItemsControl ItemsSource="{Binding Inputs}" Margin="0,4,0,0" />
+                                                <Rectangle Height="1" Margin="18,6,0,2" Fill="{DynamicResource MvaBorderBrush}" />
+                                                <ItemsControl ItemsSource="{Binding Outputs}" />
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
+                        <!-- Lớp phủ vẽ dây — phải là con CUỐI để nằm trên cùng -->
+                        <controls:TerminalWires ConnectCommand="{Binding ConnectCommand}"
+                                                DisconnectCommand="{Binding DisconnectCommand}" />
+                        </Grid>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
@@ -838,10 +1074,13 @@
                             </Grid>
                         </Border>
                         <Grid Background="{DynamicResource MvaViewportBrush}">
-                            <TextBlock Text="Kéo thả ảnh vào đây, hoặc bấm 📂 Mở ảnh (Ctrl+O)&#x0a;&#x0a;Lăn chuột: zoom — Kéo chuột: di chuyển&#x0a;Double-click: vừa khung"
-                                       TextAlignment="Center" Opacity="0.5"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Visibility="{Binding OriginalImage, Converter={StaticResource NullToVis}}" />
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Visibility="{Binding OriginalImage, Converter={StaticResource NullToVis}}">
+                                <Image Source="{DynamicResource MvaWordmarkImage}" Width="220" Opacity="0.22"
+                                       RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,0,22" />
+                                <TextBlock Text="Kéo thả ảnh vào đây, hoặc bấm 📂 Mở ảnh (Ctrl+O)&#x0a;&#x0a;Lăn chuột: zoom — Kéo chuột: di chuyển&#x0a;Double-click: vừa khung"
+                                           TextAlignment="Center" Opacity="0.5" />
+                            </StackPanel>
                             <!--
                                 ImageViewer là custom control tự viết (Views/Controls/):
                                 zoom / pan / chọn vùng cắt / báo tọa độ pixel về ViewModel
@@ -885,7 +1124,7 @@
                             </Grid>
                         </Border>
                         <Grid Background="{DynamicResource MvaViewportBrush}">
-                            <TextBlock Text="Chạy pipeline để xem kết quả (F5)"
+                            <TextBlock Text="Chạy job để xem kết quả (F5)"
                                        Opacity="0.5" HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Visibility="{Binding ResultImage, Converter={StaticResource NullToVis}}" />
                             <controls:ImageViewer Source="{Binding ResultImage}"
