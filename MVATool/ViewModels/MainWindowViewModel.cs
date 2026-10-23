@@ -157,7 +157,10 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>Public để code-behind gọi khi người dùng kéo thả file vào cửa sổ.</summary>
-    public async Task LoadImageAsync(string path)
+    public async Task LoadImageAsync(string path) => await TryLoadImageAsync(path);
+
+    /// <summary>Như LoadImageAsync nhưng báo lại có load được không — vòng lặp batch cần biết để bỏ qua ảnh lỗi.</summary>
+    private async Task<bool> TryLoadImageAsync(string path)
     {
         try
         {
@@ -178,10 +181,12 @@ public partial class MainWindowViewModel : ObservableObject
             // Khi chạy hàng loạt, vòng lặp batch tự gọi RunPipelineAsync — không auto-run ở đây.
             if (IsAutoRunEnabled && !IsBatchRunning && Pipeline.Count > 0)
                 await RunPipelineAsync();
+            return true;
         }
         catch (Exception ex)
         {
             StatusMessage = $"Lỗi: {ex.Message}";
+            return false;
         }
     }
 
@@ -564,10 +569,13 @@ public partial class MainWindowViewModel : ObservableObject
     private bool CanRunPipeline() => HasImage && !IsBusy && !IsBatchRunning;
 
     [RelayCommand(CanExecute = nameof(CanRunPipeline))]
-    private async Task RunPipelineAsync()
+    private Task RunPipelineAsync() => TryRunPipelineAsync();
+
+    /// <summary>Chạy pipeline; trả về false nếu lỗi (thông báo lỗi đã nằm trong StatusMessage).</summary>
+    private async Task<bool> TryRunPipelineAsync()
     {
         if (_originalMat is null)
-            return;
+            return false;
 
         IsBusy = true;
         try
@@ -605,10 +613,12 @@ public partial class MainWindowViewModel : ObservableObject
                 });
             }
             SaveResultCommand.NotifyCanExecuteChanged();
+            return true;
         }
         catch (Exception ex)
         {
             StatusMessage = $"Lỗi khi xử lý: {ex.Message}";
+            return false;
         }
         finally
         {
@@ -732,6 +742,7 @@ public partial class MainWindowViewModel : ObservableObject
         IsBatchRunning = true;
         var total = Stopwatch.StartNew();
         var processed = 0;
+        var failed = new List<string>();
 
         try
         {
@@ -742,19 +753,29 @@ public partial class MainWindowViewModel : ObservableObject
 
                 var item = ImageFiles[i];
                 SelectedImageFile = item; // highlight trên ListBox theo tiến độ
-                await LoadImageAsync(item.FullPath);
-                await RunPipelineAsync();
-                processed++;
 
-                if (IsBatchSaveEnabled && _resultMat is not null)
+                // Load hoặc xử lý lỗi → BỎ QUA ảnh này, giữ thông báo lỗi trên thanh trạng thái.
+                // (Trước đây vẫn chạy tiếp trên ảnh CŨ rồi ghi đè mất thông báo lỗi
+                // → trông như ảnh không hề được cập nhật.)
+                if (!await TryLoadImageAsync(item.FullPath) || !await TryRunPipelineAsync())
                 {
-                    var outputPath = Path.Combine(
-                        Path.GetDirectoryName(item.FullPath)!, "ket-qua",
-                        Path.GetFileNameWithoutExtension(item.Name) + ".png");
-                    _imageService.Save(_resultMat, outputPath);
+                    failed.Add(item.Name);
+                    StatusMessage = $"[{i + 1}/{ImageFiles.Count}] {item.Name} — {StatusMessage}";
                 }
+                else
+                {
+                    processed++;
 
-                StatusMessage = $"[{i + 1}/{ImageFiles.Count}] {item.Name}";
+                    if (IsBatchSaveEnabled && _resultMat is not null)
+                    {
+                        var outputPath = Path.Combine(
+                            Path.GetDirectoryName(item.FullPath)!, "ket-qua",
+                            Path.GetFileNameWithoutExtension(item.Name) + ".png");
+                        _imageService.Save(_resultMat, outputPath);
+                    }
+
+                    StatusMessage = $"[{i + 1}/{ImageFiles.Count}] {item.Name}";
+                }
 
                 // Nghỉ một nhịp cho mắt kịp nhìn kết quả — cũng là điểm nhận lệnh hủy.
                 try
@@ -780,9 +801,10 @@ public partial class MainWindowViewModel : ObservableObject
                 Operation = $"Chạy thư mục ({processed}/{ImageFiles.Count} ảnh)",
                 DurationMs = total.Elapsed.TotalMilliseconds,
             });
-            StatusMessage = token.IsCancellationRequested
+            var failedText = failed.Count == 0 ? "" : $" {failed.Count} ảnh lỗi: {string.Join(", ", failed)}.";
+            StatusMessage = (token.IsCancellationRequested
                 ? $"Đã dừng: xử lý {processed}/{ImageFiles.Count} ảnh."
-                : $"Xong cả thư mục: {processed} ảnh, {total.Elapsed.TotalMilliseconds:F0} ms.";
+                : $"Xong cả thư mục: {processed} ảnh, {total.Elapsed.TotalMilliseconds:F0} ms.") + failedText;
         }
     }
 

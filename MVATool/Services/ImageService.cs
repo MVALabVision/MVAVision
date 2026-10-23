@@ -7,9 +7,13 @@ namespace MVATool.Services;
 
 public class ImageService : IImageService
 {
+    // Không dùng Cv2.ImRead / ImWrite: trên Windows chúng mở file bằng đường dẫn
+    // ANSI nên HỎNG với thư mục có dấu tiếng Việt ("D:\Ảnh mẫu\..."). Đọc/ghi byte
+    // bằng .NET (hiểu Unicode) rồi để OpenCV giải mã / mã hóa trong bộ nhớ.
+
     public Mat Load(string path)
     {
-        var mat = Cv2.ImRead(path, ImreadModes.Color);
+        var mat = Cv2.ImDecode(File.ReadAllBytes(path), ImreadModes.Color);
         if (mat.Empty())
             throw new InvalidOperationException($"Không đọc được ảnh: {path}");
         return mat;
@@ -21,8 +25,9 @@ public class ImageService : IImageService
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory); // không làm gì nếu đã tồn tại
 
-        if (!Cv2.ImWrite(path, mat))
+        if (!Cv2.ImEncode(Path.GetExtension(path), mat, out var bytes))
             throw new InvalidOperationException($"Không ghi được file: {path}");
+        File.WriteAllBytes(path, bytes);
     }
 
     private static readonly string[] ImageExtensions = { ".png", ".jpg", ".jpeg", ".bmp" };
