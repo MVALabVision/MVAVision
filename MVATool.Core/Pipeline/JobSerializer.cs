@@ -26,6 +26,8 @@ public sealed record JobLoadResult(IReadOnlyList<PipelineNode> Nodes, IReadOnlyL
 /// - "type"  = Id trong ProcessorCatalog (tên class), KHÔNG phụ thuộc tên hiển thị.
 /// - "links" : dây nối của terminal vào → (chỉ số tool nguồn, tên terminal ra).
 ///             tool = -1 nghĩa là "Ảnh gốc".
+/// - Tham số file (ảnh mẫu...) lưu đường dẫn TƯƠNG ĐỐI theo thư mục chứa file job
+///   nếu file ảnh nằm trong thư mục đó → chép cả thư mục job sang máy khác vẫn chạy.
 /// - Tham số khớp theo TÊN: thêm/bớt tham số ở phiên bản sau thì file cũ vẫn mở được,
 ///   chỗ nào không khớp chỉ sinh cảnh báo chứ không hỏng cả job.
 /// </summary>
@@ -41,7 +43,8 @@ public static class JobSerializer
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
-    public static string Save(IReadOnlyList<PipelineNode> nodes, ToolOutput source)
+    /// <param name="jobDirectory">Thư mục sẽ chứa file job — để ghi đường dẫn file dạng tương đối. null = giữ tuyệt đối.</param>
+    public static string Save(IReadOnlyList<PipelineNode> nodes, ToolOutput source, string? jobDirectory = null)
     {
         // Terminal ra → chỉ số tool sở hữu nó, để ghi dây nối dưới dạng (tool, tên terminal).
         var owners = new Dictionary<ToolOutput, int> { [source] = -1 };
@@ -69,6 +72,9 @@ public static class JobSerializer
                     case ChoiceParameter choice:
                         values[parameter.Name] = choice.Value;
                         break;
+                    case FileParameter file:
+                        values[parameter.Name] = ToStoredPath(file.Value, jobDirectory);
+                        break;
                 }
 
                 if (parameter.Source is { } linked && owners.TryGetValue(linked, out var owner))
@@ -95,7 +101,8 @@ public static class JobSerializer
     }
 
     /// <exception cref="InvalidDataException">File không phải job hợp lệ.</exception>
-    public static JobLoadResult Load(string json, IProcessorCatalog catalog, ToolOutput source)
+    /// <param name="jobDirectory">Thư mục chứa file job — để giải đường dẫn file tương đối.</param>
+    public static JobLoadResult Load(string json, IProcessorCatalog catalog, ToolOutput source, string? jobDirectory = null)
     {
         JsonNode? root;
         try
@@ -134,7 +141,7 @@ public static class JobSerializer
                 foreach (var (name, value) in values)
                 {
                     var parameter = node.Inputs.FirstOrDefault(p => p.Name == name);
-                    if (parameter is null || value is null || !TryAssign(parameter, value))
+                    if (parameter is null || value is null || !TryAssign(parameter, value, jobDirectory))
                         warnings.Add($"Tool #{i + 1} {info.Name}: bỏ qua giá trị \"{name}\".");
                 }
             }
@@ -178,7 +185,7 @@ public static class JobSerializer
         return owner.Outputs.FirstOrDefault(o => o.Name == outputName);
     }
 
-    private static bool TryAssign(ProcessorParameter parameter, JsonNode value)
+    private static bool TryAssign(ProcessorParameter parameter, JsonNode value, string? jobDirectory)
     {
         try
         {
@@ -193,6 +200,9 @@ public static class JobSerializer
                 case ChoiceParameter choice when choice.Options.Contains(value.GetValue<string>()):
                     choice.Value = value.GetValue<string>();
                     return true;
+                case FileParameter file:
+                    file.Value = FromStoredPath(value.GetValue<string>(), jobDirectory);
+                    return true;
                 default:
                     return false;
             }
@@ -202,4 +212,19 @@ public static class JobSerializer
             return false; // sai kiểu dữ liệu trong file
         }
     }
+
+    /// <summary>File nằm trong thư mục job → ghi tương đối ("mau/chi-tiet.png"), còn lại giữ tuyệt đối.</summary>
+    private static string ToStoredPath(string path, string? jobDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(path) || jobDirectory is null || !Path.IsPathFullyQualified(path))
+            return path;
+
+        var relative = Path.GetRelativePath(jobDirectory, path);
+        return relative.StartsWith("..") || Path.IsPathRooted(relative) ? path : relative;
+    }
+
+    private static string FromStoredPath(string stored, string? jobDirectory) =>
+        string.IsNullOrWhiteSpace(stored) || jobDirectory is null || Path.IsPathRooted(stored)
+            ? stored
+            : Path.GetFullPath(Path.Combine(jobDirectory, stored));
 }

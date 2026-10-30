@@ -50,7 +50,8 @@ public abstract partial class ProcessorParameter : ObservableObject
 
         if (!Source.HasValue)
             throw new InvalidOperationException(
-                $"Tham số '{Name}' nối tới '{Source.Name}' nhưng đầu ra đó chưa có giá trị (bước nguồn đang bị tắt?).");
+                $"Tham số '{Name}' nối tới '{Source.Name}' nhưng đầu ra đó chưa có giá trị "
+                + "(bước nguồn đang bị tắt, hoặc chưa cấu hình xong — vd Ảnh từ file chưa chọn file?).");
 
         Accept(Source.BoxedValue!);
     }

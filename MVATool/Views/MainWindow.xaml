@@ -517,6 +517,30 @@
                           ItemsSource="{Binding Options}" SelectedItem="{Binding Value}" />
             </Grid>
         </DataTemplate>
+        <!-- Tham số file (ảnh mẫu / ảnh chuẩn): tên file + nút "…" chọn file + nút 📷 lấy ảnh gốc hiện tại.
+             Command nằm ở MainWindowViewModel (cần dialog) → tìm ngược lên Window, truyền chính tham số vào. -->
+        <DataTemplate DataType="{x:Type param:FileParameter}">
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Margin="6,0" Text="{Binding DisplayText}" FontSize="11"
+                           FontFamily="{StaticResource MvaMonoFont}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Value}" />
+                <Button Grid.Column="2" Content="…" FontSize="11" Padding="6,0" Margin="0,0,4,0"
+                        ToolTip="Chọn file ảnh"
+                        Command="{Binding DataContext.BrowseFileParameterCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}" />
+                <Button Grid.Column="3" Content="📷" FontSize="11" Padding="4,0"
+                        ToolTip="Lưu ảnh gốc hiện tại làm file này (mẹo: cắt vùng vật mẫu trước, lưu xong bấm Khôi phục)"
+                        Command="{Binding DataContext.CaptureFileParameterCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}" />
+            </Grid>
+        </DataTemplate>
         <!-- Terminal vào thuần (ảnh phụ, contours...) — không nhập tay, chỉ hiện tên. -->
         <DataTemplate DataType="{x:Type param:InputPort}">
             <TextBlock Text="{Binding Name}" FontSize="11" Margin="0,4,0,0" />
@@ -1012,6 +1036,19 @@
                                                             Command="{Binding DataContext.RemoveStepCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                             CommandParameter="{Binding}" />
                                                 </Grid>
+                                                <!-- Tool bị bỏ qua vì chưa cấu hình xong (chưa chọn file, chưa nối ảnh mẫu...) -->
+                                                <TextBlock Text="{Binding WarningText}" FontSize="10.5" Margin="0,4,0,0"
+                                                           TextWrapping="Wrap" Foreground="#FFE8A33D">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <Trigger Property="Text" Value="">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
                                                 <!-- Terminal vào rồi terminal ra — DataTemplate ngầm định khai báo trong Resources -->
                                                 <ItemsControl ItemsSource="{Binding Inputs}" Margin="0,4,0,0" />
                                                 <Rectangle Height="1" Margin="18,6,0,2" Fill="{DynamicResource MvaBorderBrush}" />

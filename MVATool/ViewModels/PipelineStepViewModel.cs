@@ -41,6 +41,10 @@ public partial class PipelineStepViewModel : ObservableObject
     [ObservableProperty]
     private string _durationText = "";
 
+    /// <summary>"⚠ Chưa nối Ảnh mẫu..." — tool bị bỏ qua ở lần chạy gần nhất vì chưa cấu hình xong. Rỗng = bình thường.</summary>
+    [ObservableProperty]
+    private string _warningText = "";
+
     /// <summary>
     /// Gộp mọi thay đổi ảnh hưởng tới kết quả (bật/tắt, tham số, dây nối) thành MỘT event,
     /// để MainWindowViewModel biết đường tự chạy lại job (auto-run).

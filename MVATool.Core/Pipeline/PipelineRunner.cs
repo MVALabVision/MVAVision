@@ -4,16 +4,24 @@ using OpenCvSharp;
 
 namespace MVATool.Core.Pipeline;
 
-/// <summary>Kết quả 1 lần chạy. Durations[i] = null nghĩa là tool i bị tắt.</summary>
-public sealed record PipelineRunResult(Mat Result, IReadOnlyList<double?> Durations);
+/// <summary>
+/// Kết quả 1 lần chạy. Durations[i] = null nghĩa là tool i không chạy (bị tắt / bị bỏ qua).
+/// Warnings[i] != null nghĩa là tool i bị BỎ QUA vì chưa sẵn sàng (lý do để hiện lên UI).
+/// </summary>
+public sealed record PipelineRunResult(Mat Result, IReadOnlyList<double?> Durations, IReadOnlyList<string?> Warnings);
 
 /// <summary>
 /// Chạy job từ trên xuống (giống ToolBlock của VisionPro), truyền dữ liệu qua dây nối.
 ///
 /// Với mỗi tool:
 ///   1. Kéo giá trị từ terminal ra đã nối sang terminal vào (PullFromSource).
-///   2. "Ảnh vào" chưa nối → cấp ảnh của tool trước (chuỗi tuần tự như cũ).
+///   2. "Ảnh vào" chưa nối → cấp ảnh của tool XỬ LÝ ẢNH đứng trước gần nhất
+///      (hoặc ảnh gốc). Ảnh phụ từ tool nguồn (Ảnh từ file) chỉ đi theo dây nối.
 ///   3. Gọi tool.Run() — tool tự ghi các terminal ra.
+///
+/// Tool CHƯA SẴN SÀNG (dây nối tới terminal chưa có giá trị, hoặc tool ném
+/// ToolNotReadyException) thì bị BỎ QUA kèm cảnh báo, job vẫn chạy tiếp —
+/// tool nào phụ thuộc vào nó cũng tự bị bỏ qua theo. Lỗi thật thì dừng cả job.
 ///
 /// Vì chỉ nối được tới tool ĐỨNG TRƯỚC, chạy từ trên xuống là đủ — không thể có vòng lặp.
 ///
@@ -40,6 +48,7 @@ public sealed class PipelineRunner
         // So sánh theo THAM CHIẾU: tool có thể ghi cùng 1 Mat vào 2 terminal.
         var produced = new HashSet<Mat>(ReferenceEqualityComparer.Instance) { source };
         var durations = new double?[nodes.Count];
+        var warnings = new string?[nodes.Count];
         Mat? keep = null;
 
         try
@@ -53,6 +62,15 @@ public sealed class PipelineRunner
                 if (!node.IsEnabled)
                     continue;
 
+                // Dây nối tới terminal CHƯA CÓ GIÁ TRỊ (tool nguồn tắt / bị bỏ qua / chưa chọn file)
+                // → tool này chưa chạy được. Bỏ qua chứ không làm hỏng cả job.
+                if (node.Inputs.FirstOrDefault(p => p.Source is { HasValue: false }) is { } missing)
+                {
+                    warnings[i] = $"Chưa có dữ liệu cho \"{missing.Name}\" — tool nguồn đang tắt hoặc chưa cấu hình xong "
+                                  + "(vd Ảnh từ file chưa chọn file).";
+                    continue;
+                }
+
                 try
                 {
                     foreach (var parameter in node.Inputs)
@@ -65,6 +83,10 @@ public sealed class PipelineRunner
                     node.Tool.Run();
                     stopwatch.Stop();
                     durations[i] = stopwatch.Elapsed.TotalMilliseconds;
+                }
+                catch (ToolNotReadyException ex)
+                {
+                    warnings[i] = ex.Message;
                 }
                 catch (Exception ex)
                 {
@@ -81,13 +103,24 @@ public sealed class PipelineRunner
                     }
                 }
 
-                // Ảnh "hiện hành" của chuỗi = ảnh ra đầu tiên của tool (tool không ra ảnh thì giữ nguyên).
-                if (node.Outputs.Select(o => o.BoxedValue).OfType<Mat>().FirstOrDefault() is { } image)
+                if (warnings[i] is not null)
+                {
+                    // Tool bỏ qua: xóa mọi đầu ra nó lỡ ghi dở (ảnh đã được gom để Dispose ở trên)
+                    // để tool phía sau thấy "chưa có giá trị" mà bỏ qua theo, chuỗi ảnh giữ nguyên.
+                    foreach (var output in node.Outputs)
+                        output.Reset();
+                    continue;
+                }
+
+                // Ảnh "hiện hành" của chuỗi = "Ảnh ra" của tool XỬ LÝ ẢNH. Tool nguồn ảnh phụ
+                // (Ảnh từ file...) không chen vào chuỗi — nếu không, tool đứng sau ảnh mẫu
+                // sẽ xử lý nhầm ảnh mẫu thay cho ảnh gốc. Muốn dùng ảnh phụ thì nối dây.
+                if (node.Tool is ImageProcessorTool { Image.Value: { } image })
                     current = image;
             }
 
             keep = current;
-            return new PipelineRunResult(current, durations);
+            return new PipelineRunResult(current, durations, warnings);
         }
         finally
         {

@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using MVATool.Core;
+using MVATool.Core.Pipeline;
 using MVATool.Services;
 using MVATool.ViewModels;
 using MVATool.Views;
@@ -43,9 +44,28 @@ public partial class App : Application
         // tạo ViewModel này sẽ không bao giờ đi qua đây nên không cần UI.
         viewModel.SystemStatus.Start();
 
-        // Mở ảnh truyền qua dòng lệnh: `MVATool.exe C:\anh\mau.png`
-        // (tiện gắn file association / kéo file thả vào icon exe).
-        if (e.Args.Length > 0 && File.Exists(e.Args[0]))
-            _ = viewModel.LoadImageAsync(e.Args[0]); // lỗi đã được xử lý bên trong
+        // Mở ảnh / thư mục / job truyền qua dòng lệnh (tiện gắn file association,
+        // kéo file thả vào icon exe, hoặc mở sẵn một ca kiểm thử).
+        _ = OpenFromCommandLineAsync(viewModel, e.Args); // lỗi đã được xử lý bên trong
+    }
+
+    /// <summary>
+    /// <c>MVATool.exe [job.mvajob] [ảnh | thư mục]</c> — job được nạp TRƯỚC,
+    /// để ảnh mở ra là chạy luôn job đó.
+    /// </summary>
+    private static async Task OpenFromCommandLineAsync(MainWindowViewModel viewModel, string[] args)
+    {
+        static bool IsJob(string path) => path.EndsWith(JobSerializer.FileExtension, StringComparison.OrdinalIgnoreCase);
+
+        foreach (var job in args.Where(a => IsJob(a) && File.Exists(a)))
+            await viewModel.LoadJobAsync(job);
+
+        foreach (var path in args.Where(a => !IsJob(a)))
+        {
+            if (Directory.Exists(path))
+                viewModel.LoadFolder(path);
+            else if (File.Exists(path))
+                await viewModel.LoadImageAsync(path);
+        }
     }
 }

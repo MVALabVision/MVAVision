@@ -15,7 +15,8 @@ Giao diện theo phong cách **tool công nghiệp**: logo MVA, đèn LED trạn
 ## Ứng dụng làm được gì
 
 - Mở ảnh (nút, `Ctrl+O`, **kéo thả file vào cửa sổ**, hoặc truyền đường dẫn
-  qua dòng lệnh: `MVATool.exe C:\anh\mau.png`).
+  qua dòng lệnh: `MVATool.exe C:\anh\mau.png`). Dòng lệnh nhận cả job và thư mục:
+  `MVATool.exe D:\job\kiem-tra.mvajob D:\anh` (job được nạp trước, rồi mới mở ảnh).
 - **Mở cả thư mục ảnh**: danh sách file hiện ở panel trái, click file nào xem file đó,
   điều hướng ◀ ▶, và **▶▶ chạy job lần lượt với từng ảnh** (dừng được giữa chừng
   bằng nút ⏹); tùy chọn lưu kết quả từng ảnh vào thư mục con `ket-qua`.
@@ -30,15 +31,30 @@ Giao diện theo phong cách **tool công nghiệp**: logo MVA, đèn LED trạn
 - **Thao tác với ảnh gốc**: ✂ cắt (kéo chuột chọn vùng), ⟲⟳ xoay 90°, ⇆⇅ lật,
   ↩ khôi phục về ảnh như lúc mở file.
 - Xây **job nhiều tool**: thêm / xóa / đổi thứ tự / bật-tắt từng tool
-  (26 tool có sẵn — xem [Danh mục tool](#danh-mục-tool)).
+  (29 tool có sẵn — xem [Danh mục tool](#danh-mục-tool)).
 - Mỗi tool có **tham số riêng** (Slider / CheckBox / ComboBox) — UI tự sinh theo kiểu tham số.
 - **Terminal & dây nối** (giống Job Editor của VisionPro): terminal vào là chấm O rỗng,
   terminal ra là chấm O đặc kèm giá trị lần chạy gần nhất ("128", "OK", "640×480",
   "12 contour"...). **Kéo** từ chấm này thả vào chấm kia để nối, **chuột phải** vào
   chấm / dây để gỡ. Chỉ nối được tới tool **đứng trước** và **cùng kiểu dữ liệu**
   (Ảnh, Số, Đúng/Sai, Chữ, Contours) — nối sai kiểu bị chặn ngay lúc nối.
-  "Ảnh vào" không nối thì tự lấy ảnh ra của tool trước → xếp
+  "Ảnh vào" không nối thì tự lấy ảnh ra của tool **xử lý ảnh** đứng trước → xếp
   Grayscale → Blur → Threshold là chạy luôn, không cần nối dây.
+- **Job nhiều ảnh** (ảnh gốc + ảnh mẫu / ảnh chuẩn): tool **Ảnh từ file** là nguồn ảnh
+  thứ hai, đường dẫn lưu trong job nên khi chạy cả thư mục, ảnh mẫu đứng yên, còn ảnh gốc
+  đổi theo từng file. Ví dụ Template matching:
+  1. Mở ảnh, bật ✂ cắt, khoanh một chi tiết mẫu.
+  2. Thêm **Ảnh từ file**, bấm 📷 để lưu vùng vừa cắt làm ảnh mẫu (hoặc bấm … để chọn file có sẵn).
+  3. Bấm ↩ Khôi phục ảnh gốc.
+  4. Thêm **Template matching**, kéo dây "Ảnh" → "Ảnh mẫu".
+  5. Nối "Số khớp" → So sánh để có kết quả OK/NG.
+
+  Ảnh từ file **không** tự chen vào chuỗi ảnh, nên tool đứng sau nó vẫn xử lý ảnh gốc.
+  Muốn dùng ảnh phụ thì phải nối dây.
+- **Job dở dang không làm hỏng cả job**: tool chưa cấu hình xong (chưa chọn file, chưa nối
+  ảnh mẫu, nối tới tool đang tắt) bị **bỏ qua kèm dòng ⚠ màu cam** ngay trên tool đó.
+  Các tool khác vẫn chạy và ảnh kết quả vẫn cập nhật. Lỗi thật (file hỏng, ảnh mẫu lớn hơn ảnh vào…)
+  thì vẫn báo lỗi. Tool tự viết muốn có hành vi này thì ném `ToolNotReadyException`.
 - **Phán định OK/NG**, ví dụ: Threshold → Tìm contour → So sánh (nối "Giá trị" ←
   "Số contour", chọn "=", đặt "Ngưỡng") → Hiển thị OK/NG (nối "Đạt" ← "Đạt") —
   ảnh kết quả có chữ OK xanh / NG đỏ. Nhiều phép kiểm tra thì gộp bằng Logic AND/OR.
@@ -79,6 +95,9 @@ Giao diện theo phong cách **tool công nghiệp**: logo MVA, đèn LED trạn
 | | Vẽ contour | vào: Contours |
 | | Đo độ sáng TB | ra: Độ sáng TB |
 | | Đếm blob (**bài tập**) | — |
+| Nhiều ảnh | Ảnh từ file (mẫu / chuẩn) — nguồn ảnh, không có "Ảnh vào" | vào: File ảnh, Màu · ra: Ảnh |
+| | Template matching (ảnh mẫu) | vào: Ảnh mẫu, Phương pháp, Điểm tối thiểu, Số khớp tối đa · ra: Số khớp, Điểm cao nhất, X, Y, Tìm thấy |
+| | Phát hiện khác biệt (ảnh chuẩn) — ảnh ra là mặt nạ vùng khác | vào: Ảnh chuẩn, Ngưỡng chênh, Làm mờ trước · ra: Tỉ lệ khác (%), Số pixel khác |
 | Phán định | So sánh (OK/NG) — không có ảnh | vào: Giá trị, Phép so sánh, Ngưỡng · ra: Đạt, Kết quả |
 | | Logic AND/OR — không có ảnh | vào: A, Phép, B · ra: Đạt, Kết quả |
 | | Hiển thị OK/NG | vào: Đạt |
@@ -235,6 +254,8 @@ nên đổi tên hiển thị tiếng Việt thoải mái mà file job cũ vẫn
 - `type` = Id trong `ProcessorCatalog`; `name` chỉ để người đọc dễ hiểu.
 - `links`: terminal vào → (chỉ số tool nguồn, tên terminal ra); `tool: -1` là "Ảnh gốc".
 - Tham số khớp theo **tên** — thêm/bớt tham số ở phiên bản sau, file cũ vẫn mở được.
+- Tham số file (ảnh mẫu...) được lưu **tương đối** theo thư mục chứa job nếu file nằm
+  trong thư mục đó. Để ảnh mẫu cạnh file `.mvajob` thì chép cả thư mục sang máy khác vẫn chạy.
 
 ## Bài tập (từ dễ đến khó)
 

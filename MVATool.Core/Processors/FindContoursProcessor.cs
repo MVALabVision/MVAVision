@@ -16,8 +16,11 @@ namespace MVATool.Core.Processors;
 public class FindContoursProcessor : IImageProcessor
 {
     private readonly NumberParameter _minArea = new("Diện tích min", min: 0, max: 5000, value: 50, step: 10);
+    private readonly NumberParameter _maxArea = new("Diện tích max", min: 0, max: 5000, value: 500, step: 10);
+    
     private readonly ToolOutput<Point[][]> _contours = new("Contours");
     private readonly ToolOutput<double> _count = new("Số contour");
+    private readonly ToolOutput<double> _maxAreaOutput = new("Diện tích max");
 
     public string Name => "Tìm contour";
 
@@ -27,8 +30,8 @@ public class FindContoursProcessor : IImageProcessor
 
     public FindContoursProcessor()
     {
-        Parameters = new ProcessorParameter[] { _minArea };
-        Outputs = new ToolOutput[] { _contours, _count };
+        Parameters = new ProcessorParameter[] { _minArea, _maxArea };
+        Outputs = new ToolOutput[] { _contours, _count, _maxAreaOutput };
     }
 
     public Mat Process(Mat input)
@@ -37,6 +40,7 @@ public class FindContoursProcessor : IImageProcessor
 
         _contours.Value = contours;
         _count.Value = contours.Length;
+        _maxAreaOutput.Value = 10000;
 
         var output = input.ToBgr();
         Cv2.DrawContours(output, contours, -1, new Scalar(0, 255, 0), 2);

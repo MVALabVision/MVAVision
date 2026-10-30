@@ -5,6 +5,7 @@ using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MVATool.Core;
+using MVATool.Core.Parameters;
 using MVATool.Core.Pipeline;
 using MVATool.Models;
 using MVATool.Services;
@@ -180,7 +181,12 @@ public partial class MainWindowViewModel : ObservableObject
 
             // Khi chạy hàng loạt, vòng lặp batch tự gọi RunPipelineAsync — không auto-run ở đây.
             if (IsAutoRunEnabled && !IsBatchRunning && Pipeline.Count > 0)
-                await RunPipelineAsync();
+            {
+                if (IsBusy)
+                    _rerunRequested = true; // bấm ▶ ▶ ▶ liên tục: chỉ chạy lại 1 lần cho ảnh MỚI NHẤT, không xếp hàng từng ảnh
+                else
+                    await RunPipelineAsync();
+            }
             return true;
         }
         catch (Exception ex)
@@ -419,7 +425,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var json = JobSerializer.Save(Pipeline.Select(s => s.Node).ToList(), _runner.Source);
+            var json = JobSerializer.Save(Pipeline.Select(s => s.Node).ToList(), _runner.Source, Path.GetDirectoryName(path));
             await File.WriteAllTextAsync(path, json);
             _jobPath = path;
             StatusMessage = $"Đã lưu job ({Pipeline.Count} tool): {path}";
@@ -446,7 +452,7 @@ public partial class MainWindowViewModel : ObservableObject
         try
         {
             var json = await File.ReadAllTextAsync(path);
-            result = JobSerializer.Load(json, _catalog, _runner.Source);
+            result = JobSerializer.Load(json, _catalog, _runner.Source, Path.GetDirectoryName(Path.GetFullPath(path)));
         }
         catch (Exception ex)
         {
@@ -475,6 +481,52 @@ public partial class MainWindowViewModel : ObservableObject
             : $"Đã mở job với {result.Warnings.Count} cảnh báo: {string.Join(" | ", result.Warnings)}";
 
         IsAutoRunEnabled = autoRun; // bật lại → hook OnIsAutoRunEnabledChanged tự chạy 1 lần
+    }
+
+    // ===== Tham số file (ảnh mẫu / ảnh chuẩn của tool "Ảnh từ file") =====
+    // Nút trong DataTemplate của FileParameter truyền chính tham số đó vào command.
+
+    [RelayCommand]
+    private async Task BrowseFileParameterAsync(FileParameter parameter)
+    {
+        var path = await _filePicker.PickImageFileAsync();
+        if (path is null)
+            return;
+
+        parameter.Value = path; // đổi Value → SettingsChanged → auto-run đọc ảnh mới
+        StatusMessage = $"{parameter.Name}: {Path.GetFileName(path)}";
+    }
+
+    /// <summary>
+    /// Lưu ẢNH GỐC HIỆN TẠI thành file rồi gán vào tham số — cách "dạy" ảnh mẫu nhanh nhất:
+    /// bật cắt ảnh → khoanh vật mẫu → bấm 📷 → lưu → Khôi phục ảnh gốc.
+    /// </summary>
+    [RelayCommand]
+    private async Task CaptureFileParameterAsync(FileParameter parameter)
+    {
+        if (_originalMat is null || IsBatchRunning)
+        {
+            StatusMessage = "Mở một ảnh (và cắt vùng cần làm mẫu) trước khi lấy ảnh mẫu.";
+            return;
+        }
+
+        var suggested = parameter.HasValue ? Path.GetFileName(parameter.Value) : "anh-mau.png";
+        var path = await _filePicker.PickSaveFileAsync(suggested);
+        if (path is null)
+            return;
+
+        try
+        {
+            _imageService.Save(_originalMat, path);
+            parameter.Value = path;
+            History.Insert(0, new LogEntry { Operation = $"Lưu ảnh mẫu {Path.GetFileName(path)} ({_originalMat.Width} × {_originalMat.Height})" });
+            StatusMessage = $"Đã lưu ảnh mẫu {_originalMat.Width} × {_originalMat.Height}: {path}. "
+                            + "Bấm Khôi phục để quay lại ảnh gốc đầy đủ.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Lỗi khi lưu ảnh mẫu: {ex.Message}";
+        }
     }
 
     /// <summary>Terminal "Ảnh gốc" — vẽ ở đầu job, tool nào cũng nối được vào.</summary>
@@ -571,11 +623,23 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRunPipeline))]
     private Task RunPipelineAsync() => TryRunPipelineAsync();
 
+    /// <summary>
+    /// "Cổng" chỉ cho MỘT lần chạy job tại một thời điểm. Mọi tool + terminal là đối tượng
+    /// DÙNG CHUNG: hai lần chạy chồng nhau thì lần này Reset/Dispose ảnh ra trong lúc lần kia
+    /// đang đọc → "đầu ra đó chưa có giá trị", thậm chí đọc ảnh đã Dispose.
+    /// Ai tới sau thì xếp hàng đợi (await) chứ không chạy song song.
+    /// </summary>
+    private readonly SemaphoreSlim _runGate = new(1, 1);
+
     /// <summary>Chạy pipeline; trả về false nếu lỗi (thông báo lỗi đã nằm trong StatusMessage).</summary>
     private async Task<bool> TryRunPipelineAsync()
     {
+        await _runGate.WaitAsync();
         if (_originalMat is null)
+        {
+            _runGate.Release();
             return false;
+        }
 
         IsBusy = true;
         try
@@ -591,17 +655,22 @@ public partial class MainWindowViewModel : ObservableObject
 
             // Task.Run đẩy phần tính toán nặng ra background thread → UI không đơ.
             // Runner lo việc chuyền dữ liệu qua các mối nối và Dispose ảnh trung gian.
-            var (result, durations) = await Task.Run(() => _runner.Run(input, nodes));
+            var (result, durations, warnings) = await Task.Run(() => _runner.Run(input, nodes));
             total.Stop();
 
             // Từ sau await, code lại chạy trên UI thread → cập nhật property an toàn.
             for (var i = 0; i < steps.Count; i++)
+            {
                 steps[i].DurationText = durations[i] is { } ms ? $"{ms:F1} ms" : "";
+                steps[i].WarningText = warnings[i] is { } w ? $"⚠ {w}" : "";
+            }
 
             _resultMat?.Dispose();
             _resultMat = result;
             ResultImage = _imageService.ToBitmap(result);
-            StatusMessage = $"Pipeline xong: {enabledCount} bước, {total.Elapsed.TotalMilliseconds:F1} ms.";
+            var skipped = steps.Where(s => s.WarningText != "").ToList();
+            StatusMessage = $"Pipeline xong: {enabledCount} bước, {total.Elapsed.TotalMilliseconds:F1} ms."
+                            + (skipped.Count == 0 ? "" : $" ⚠ Bỏ qua {skipped.Count} tool chưa sẵn sàng: {skipped[0].Title} — {skipped[0].WarningText[2..]}");
             // Khi chạy hàng loạt, không ghi từng ảnh vào lịch sử (sẽ ngập) —
             // RunFolderAsync ghi MỘT dòng tổng kết khi xong.
             if (!IsBatchRunning)
@@ -623,6 +692,7 @@ public partial class MainWindowViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            _runGate.Release();
             // Có yêu cầu chạy lại dồn trong lúc đang chạy? Chạy nốt.
             if (_rerunRequested)
             {
@@ -677,9 +747,13 @@ public partial class MainWindowViewModel : ObservableObject
     private async Task OpenFolderAsync()
     {
         var folder = await _filePicker.PickFolderAsync();
-        if (folder is null)
-            return;
+        if (folder is not null)
+            LoadFolder(folder);
+    }
 
+    /// <summary>Public để mở thư mục từ dòng lệnh: <c>MVATool.exe D:\anh</c>.</summary>
+    public void LoadFolder(string folder)
+    {
         ImageFiles.Clear();
         foreach (var file in _imageService.ListImageFiles(folder))
             ImageFiles.Add(new ImageFileItem(file));

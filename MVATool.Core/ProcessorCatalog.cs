@@ -60,6 +60,11 @@ public class ProcessorCatalog : IProcessorCatalog
         Describe(() => new MeanBrightnessProcessor()),
         Describe(() => new BlobCountProcessor()),
 
+        // --- Nhiều ảnh: nguồn ảnh phụ (mẫu / chuẩn) + thuật toán cần ≥ 2 ảnh ---
+        Describe(() => new ImageFileTool()),
+        Describe(() => new TemplateMatchProcessor()),
+        Describe(() => new ImageDiffProcessor()),
+
         // --- Phán định (IVisionTool: không cần ảnh) ---
         Describe(() => new CompareTool()),
         Describe(() => new LogicTool()),

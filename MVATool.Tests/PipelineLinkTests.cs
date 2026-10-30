@@ -122,15 +122,19 @@ public class PipelineLinkTests
     }
 
     [Fact]
-    public void NoiToiToolBiTat_BaoLoiRoRang()
+    public void NoiToiToolBiTat_ToolSauBiBoQuaKemCanhBao_JobVanChay()
     {
         var find = new PipelineNode(new FindContoursProcessor()) { IsEnabled = false };
         var compare = new PipelineNode(new CompareTool());
         Param<NumberParameter>(compare, "Giá trị").Source = Output<double>(find, "Số contour");
 
-        var ex = Assert.Throws<InvalidOperationException>(() =>
-            new PipelineRunner().Run(new Mat(4, 4, MatType.CV_8UC1), new[] { find, compare }));
-        Assert.Contains("#2", ex.Message);
+        var run = new PipelineRunner().Run(new Mat(4, 4, MatType.CV_8UC1), new[] { find, compare });
+        using var _ = run.Result;
+
+        Assert.Null(run.Warnings[0]); // tool tắt: không phải cảnh báo, chỉ là không chạy
+        Assert.Contains("Giá trị", run.Warnings[1]);
+        Assert.Null(run.Durations[1]);
+        Assert.False(Output<string>(compare, "Kết quả").HasValue);
     }
 
     [Fact]
