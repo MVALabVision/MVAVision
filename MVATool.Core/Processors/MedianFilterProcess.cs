@@ -8,7 +8,7 @@ public class MedianFilterProcess : IImageProcessor
     // Min=1, Step=2 => Slider chỉ cho chọn 1, 3, 5, ... (kernel của OpenCV phải là số lẻ)
     private readonly NumberParameter _kernelSize = new("Kernel", min: 1, max: 51, value: 15, step: 2);
 
-    public string Name => "Median Filter (làm mờ)";
+    public string Name => "Lọc trung vị (MedianFilter)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

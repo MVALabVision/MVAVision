@@ -13,7 +13,7 @@ public class CannyEdgeProcessor : IImageProcessor
     private readonly NumberParameter _threshold1 = new("Ngưỡng dưới", min: 0, max: 255, value: 50);
     private readonly NumberParameter _threshold2 = new("Ngưỡng trên", min: 0, max: 255, value: 150);
 
-    public string Name => "Canny Edge (tìm biên)";
+    public string Name => "Phát hiện biên Canny (CannyEdge)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

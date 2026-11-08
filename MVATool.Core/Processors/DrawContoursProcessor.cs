@@ -16,7 +16,7 @@ public class DrawContoursProcessor : IImageProcessor
     private readonly InputPort<Point[][]> _contours = new("Contours");
     private readonly NumberParameter _thickness = new("Độ dày nét", min: 1, max: 10, value: 2);
 
-    public string Name => "Vẽ contour";
+    public string Name => "Vẽ đường viền (DrawContours)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

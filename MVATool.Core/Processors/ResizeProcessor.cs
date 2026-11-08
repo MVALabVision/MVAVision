@@ -19,7 +19,7 @@ public class ResizeProcessor : IImageProcessor
     private readonly ToolOutput<double> _width = new("Rộng");
     private readonly ToolOutput<double> _height = new("Cao");
 
-    public string Name => "Thay đổi kích thước";
+    public string Name => "Thay đổi kích thước (Resize)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

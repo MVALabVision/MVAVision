@@ -22,7 +22,7 @@ public class FindContoursProcessor : IImageProcessor
     private readonly ToolOutput<double> _count = new("Số contour");
     private readonly ToolOutput<double> _maxAreaOutput = new("Diện tích max");
 
-    public string Name => "Tìm contour";
+    public string Name => "Tìm đường viền (FindContours)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

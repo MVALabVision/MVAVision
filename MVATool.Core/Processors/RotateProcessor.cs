@@ -17,7 +17,7 @@ public class RotateProcessor : IImageProcessor
     private readonly NumberParameter _scale = new("Tỉ lệ", min: 0.1, max: 3, value: 1, step: 0.1);
     private readonly BoolParameter _keepAll = new("Giữ trọn ảnh (không cắt góc)", value: true);
 
-    public string Name => "Xoay ảnh";
+    public string Name => "Xoay ảnh (Rotate)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

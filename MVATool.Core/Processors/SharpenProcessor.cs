@@ -14,7 +14,7 @@ public class SharpenProcessor : IImageProcessor
     private readonly NumberParameter _amount = new("Mức độ", min: 0, max: 5, value: 1.5, step: 0.1);
     private readonly NumberParameter _radius = new("Bán kính (sigma)", min: 0.5, max: 10, value: 2, step: 0.5);
 
-    public string Name => "Làm sắc nét (Unsharp)";
+    public string Name => "Làm sắc nét (Sharpen)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

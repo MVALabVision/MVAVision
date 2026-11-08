@@ -13,7 +13,7 @@ public class LaplacianProcessor : IImageProcessor
     private readonly NumberParameter _kernelSize = new("Kernel", min: 1, max: 7, value: 3, step: 2);
     private readonly BoolParameter _blurFirst = new("Làm mờ trước (giảm nhiễu)", value: true);
 
-    public string Name => "Laplacian (đạo hàm bậc 2)";
+    public string Name => "Phát hiện biên Laplacian (Laplacian)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

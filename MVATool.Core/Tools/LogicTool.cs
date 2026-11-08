@@ -15,7 +15,7 @@ public class LogicTool : IVisionTool
     private readonly ToolOutput<bool> _pass = new("Đạt");
     private readonly ToolOutput<string> _result = new("Kết quả");
 
-    public string Name => "Logic AND/OR";
+    public string Name => "Phán định Logic (AND/OR)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

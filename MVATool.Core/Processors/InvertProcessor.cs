@@ -6,7 +6,7 @@ namespace MVATool.Core.Processors;
 /// <summary>Đảo màu ảnh (âm bản): mỗi pixel = 255 - giá trị cũ.</summary>
 public class InvertProcessor : IImageProcessor
 {
-    public string Name => "Invert (âm bản)";
+    public string Name => "Âm bản (Invert)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; } = Array.Empty<ProcessorParameter>();
 

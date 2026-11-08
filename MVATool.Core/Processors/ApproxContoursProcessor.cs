@@ -19,7 +19,7 @@ public class ApproxContoursProcessor : IImageProcessor
     private readonly ToolOutput<Point[][]> _approx = new("Contours xấp xỉ");
     private readonly ToolOutput<double> _vertices = new("Số đỉnh (vật lớn nhất)");
 
-    public string Name => "Xấp xỉ contour (đa giác)";
+    public string Name => "Xấp xỉ đường viền (ApproxContours)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

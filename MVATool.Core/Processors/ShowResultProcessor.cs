@@ -11,7 +11,7 @@ public class ShowResultProcessor : IImageProcessor
 {
     private readonly BoolParameter _pass = new("Đạt", value: true);
 
-    public string Name => "Hiển thị OK/NG";
+    public string Name => "Hiển thị kết quả (ShowResult)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

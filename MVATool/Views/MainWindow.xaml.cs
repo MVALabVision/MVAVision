@@ -1,4 +1,7 @@
 using System.Windows;
+using System.Windows.Controls;
+using Microsoft.Win32;
+using MVATool.Core.Parameters;
 using MVATool.ViewModels;
 
 namespace MVATool.Views;
@@ -41,6 +44,24 @@ public partial class MainWindow : Window
             await viewModel.LoadJobAsync(files[0]);
         else
             await viewModel.LoadImageAsync(files[0]);
+    }
+
+    /// <summary>
+    /// Nút 📂 trong DataTemplate của FilePathParameter — mở dialog chọn file rồi gán đường dẫn.
+    /// </summary>
+    private void OnBrowseFileClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: FilePathParameter param })
+            return;
+
+        var dlg = new OpenFileDialog
+        {
+            Title = param.Name,
+            Filter = param.Filter,
+        };
+
+        if (dlg.ShowDialog(this) == true)
+            param.Value = dlg.FileName;
     }
 
     /// <summary>

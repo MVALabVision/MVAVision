@@ -69,6 +69,11 @@ public class ProcessorCatalog : IProcessorCatalog
         Describe(() => new CompareTool()),
         Describe(() => new LogicTool()),
         Describe(() => new ShowResultProcessor()),
+        
+        Describe(() => new DilatedProcessor()),
+
+        // --- So khớp mẫu ---
+        Describe(() => new TemplateMatchingProcessor()),
     };
 
     /// <summary>Tìm tool theo Id (dùng khi mở file job). null nếu không có.</summary>

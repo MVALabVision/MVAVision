@@ -24,7 +24,7 @@ public class BlobCountProcessor : IImageProcessor
 {
     private readonly NumberParameter _minArea = new("Diện tích min", min: 0, max: 5000, value: 100, step: 50);
 
-    public string Name => "Đếm blob (bài tập)";
+    public string Name => "Đếm vật thể (BlobCount)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

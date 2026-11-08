@@ -114,6 +114,22 @@ public partial class MainWindowViewModel : ObservableObject
 
     public IReadOnlyList<ProcessorInfo> AvailableProcessors { get; }
 
+    /// <summary>Từ khoá tìm kiếm thuật toán — lọc cả tên tiếng Việt lẫn tên tiếng Anh trong ngoặc.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FilteredProcessors))]
+    private string _processorSearchText = "";
+
+    /// <summary>Danh sách thuật toán đã lọc theo từ khoá tìm kiếm.</summary>
+    public IReadOnlyList<ProcessorInfo> FilteredProcessors =>
+        string.IsNullOrWhiteSpace(ProcessorSearchText)
+            ? AvailableProcessors
+            : AvailableProcessors
+                .Where(p => p.Name.Contains(ProcessorSearchText, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+    [RelayCommand]
+    private void ClearSearch() => ProcessorSearchText = "";
+
     public ObservableCollection<PipelineStepViewModel> Pipeline { get; } = new();
 
     public ObservableCollection<LogEntry> History { get; } = new();

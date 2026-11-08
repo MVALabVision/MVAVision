@@ -15,7 +15,7 @@ public class SobelProcessor : IImageProcessor
     private readonly ChoiceParameter _direction = new("Hướng", new[] { "Độ lớn (X+Y)", "X (biên dọc)", "Y (biên ngang)" });
     private readonly NumberParameter _kernelSize = new("Kernel", min: 1, max: 7, value: 3, step: 2);
 
-    public string Name => "Sobel (đạo hàm bậc 1)";
+    public string Name => "Phát hiện biên Sobel (Sobel)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

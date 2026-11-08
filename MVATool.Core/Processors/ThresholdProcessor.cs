@@ -12,7 +12,7 @@ public class ThresholdProcessor : IImageProcessor
     private readonly NumberParameter _threshold = new("Ngưỡng", min: 0, max: 255, value: 128);
     private readonly BoolParameter _useOtsu = new("Otsu (tự tìm ngưỡng)");
 
-    public string Name => "Threshold (nhị phân)";
+    public string Name => "Nhị phân hóa (Threshold)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

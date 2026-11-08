@@ -541,6 +541,25 @@
                         CommandParameter="{Binding}" />
             </Grid>
         </DataTemplate>
+        <!-- Tham số chọn file (vd: ảnh mẫu cho Template Matching) -->
+        <DataTemplate DataType="{x:Type param:FilePathParameter}">
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                <TextBlock Grid.Column="1" Text="{Binding DisplayText}" FontSize="11"
+                           VerticalAlignment="Center" Margin="6,0"
+                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Value}"
+                           Opacity="0.85" />
+                <Button Grid.Column="2" Style="{StaticResource TinyButton}" Content="📂"
+                        Tag="{Binding}" Click="OnBrowseFileClick"
+                        ToolTip="Chọn file ảnh mẫu" />
+            </Grid>
+        </DataTemplate>
         <!-- Terminal vào thuần (ảnh phụ, contours...) — không nhập tay, chỉ hiện tên. -->
         <DataTemplate DataType="{x:Type param:InputPort}">
             <TextBlock Text="{Binding Name}" FontSize="11" Margin="0,4,0,0" />
@@ -762,6 +781,7 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -776,20 +796,54 @@
                             <TextBlock Style="{StaticResource PanelHeader}" Text="THUẬT TOÁN" />
                         </StackPanel>
                     </Border>
-                    <ListBox Grid.Row="1" Style="{StaticResource CompactList}" Margin="6"
-                             ItemsSource="{Binding AvailableProcessors}"
+                    <!-- Ô tìm kiếm thuật toán -->
+                    <Border Grid.Row="1" Margin="6,6,6,0" BorderBrush="{DynamicResource MvaBorderBrush}"
+                            BorderThickness="1" CornerRadius="4" Background="{DynamicResource MvaPanelBrush}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="🔍" FontSize="11" Margin="6,0,2,0" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource MvaTextMutedBrush}" />
+                            <TextBox Grid.Column="1" FontSize="11" BorderThickness="0" Background="Transparent"
+                                     Foreground="{DynamicResource MvaTextBrush}"
+                                     VerticalAlignment="Center" Padding="2,4"
+                                     Text="{Binding ProcessorSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Gõ tên thuật toán để lọc" />
+                            <Button Grid.Column="2" Content="✕" FontSize="10" Padding="4,0" BorderThickness="0"
+                                    Background="Transparent" Foreground="{DynamicResource MvaTextMutedBrush}"
+                                    Cursor="Hand" VerticalAlignment="Center"
+                                    Command="{Binding ClearSearchCommand}"
+                                    ToolTip="Xóa tìm kiếm">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ProcessorSearchText}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <ListBox Grid.Row="2" Style="{StaticResource CompactList}" Margin="6,4,6,0"
+                             ItemsSource="{Binding FilteredProcessors}"
                              SelectedItem="{Binding SelectedProcessorInfo}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Name}" FontSize="12" />
+                                <TextBlock Text="{Binding Name}" FontSize="12" TextWrapping="Wrap" />
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <Button Grid.Row="2" Style="{StaticResource ToolButton}" Margin="10,0,10,10"
+                    <Button Grid.Row="3" Style="{StaticResource ToolButton}" Margin="10,0,10,10"
                             HorizontalAlignment="Stretch"
                             Content="＋ Thêm vào job" Command="{Binding AddStepCommand}" />
 
-                    <Border Grid.Row="3" Style="{StaticResource PanelStrip}"
+                    <Border Grid.Row="4" Style="{StaticResource PanelStrip}"
                             BorderThickness="0,1,0,1" CornerRadius="0">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -805,7 +859,7 @@
                                        VerticalAlignment="Center" />
                         </Grid>
                     </Border>
-                    <Grid Grid.Row="4" Margin="6">
+                    <Grid Grid.Row="5" Margin="6">
                         <TextBlock Text="Bấm 🗂 Mở thư mục để nạp nhiều ảnh rồi chạy lần lượt."
                                    FontSize="11" Opacity="0.6" TextWrapping="Wrap" Margin="4"
                                    Visibility="{Binding ImageFiles.Count, Converter={StaticResource ZeroToVis}}" />
@@ -820,7 +874,7 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
                     </Grid>
-                    <StackPanel Grid.Row="5" Margin="10,0,10,10">
+                    <StackPanel Grid.Row="6" Margin="10,0,10,10">
                         <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -845,7 +899,7 @@
                     </StackPanel>
 
                     <!-- ===== GIÁM SÁT HỆ THỐNG: CPU / RAM / ổ đĩa — cập nhật mỗi giây ===== -->
-                    <Border Grid.Row="6" Background="{DynamicResource MvaPanelAltBrush}"
+                    <Border Grid.Row="7" Background="{DynamicResource MvaPanelAltBrush}"
                             BorderBrush="{DynamicResource MvaBorderBrush}" BorderThickness="0,1,0,0"
                             CornerRadius="0,0,5,5" Padding="10,8">
                         <StackPanel>

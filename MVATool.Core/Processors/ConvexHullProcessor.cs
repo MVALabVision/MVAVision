@@ -22,7 +22,7 @@ public class ConvexHullProcessor : IImageProcessor
     private readonly ToolOutput<double> _defects = new("Số defect");
     private readonly ToolOutput<double> _solidity = new("Độ đặc (vật lớn nhất)");
 
-    public string Name => "Convex Hull & Defects";
+    public string Name => "Vỏ lồi (ConvexHull)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

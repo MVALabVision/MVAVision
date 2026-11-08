@@ -24,7 +24,7 @@ public class ImageDiffProcessor : IImageProcessor
     private readonly ToolOutput<double> _percent = new("Tỉ lệ khác (%)");
     private readonly ToolOutput<double> _pixels = new("Số pixel khác");
 
-    public string Name => "Phát hiện khác biệt (ảnh chuẩn)";
+    public string Name => "Phát hiện khác biệt (ImageDiff)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

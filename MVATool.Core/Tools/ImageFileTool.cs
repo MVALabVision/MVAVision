@@ -25,7 +25,7 @@ public class ImageFileTool : IVisionTool
     private Mat? _cache;
     private (string Path, DateTime Modified, string Mode) _cacheKey;
 
-    public string Name => "Ảnh từ file (mẫu / chuẩn)";
+    public string Name => "Ảnh từ file (ImageFile)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

@@ -8,7 +8,7 @@ namespace MVATool.Core.Processors;
 /// </summary>
 public class GrayscaleProcessor : IImageProcessor
 {
-    public string Name => "Grayscale (thang xám)";
+    public string Name => "Chuyển xám (Grayscale)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; } = Array.Empty<ProcessorParameter>();
 

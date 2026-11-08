@@ -26,7 +26,7 @@ public class BoundingBoxProcessor : IImageProcessor
     private readonly ToolOutput<double> _height = new("Cao (vật lớn nhất)");
     private readonly ToolOutput<double> _angle = new("Góc");
 
-    public string Name => "Bounding Box / Min Area Rect";
+    public string Name => "Hộp bao (BoundingBox)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

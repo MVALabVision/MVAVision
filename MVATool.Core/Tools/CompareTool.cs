@@ -20,7 +20,7 @@ public class CompareTool : IVisionTool
     private readonly ToolOutput<bool> _pass = new("Đạt");
     private readonly ToolOutput<string> _result = new("Kết quả");
 
-    public string Name => "So sánh (OK/NG)";
+    public string Name => "So sánh giá trị (Compare)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

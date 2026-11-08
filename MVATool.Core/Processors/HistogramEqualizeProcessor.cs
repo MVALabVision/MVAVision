@@ -16,7 +16,7 @@ public class HistogramEqualizeProcessor : IImageProcessor
     private readonly NumberParameter _clipLimit = new("Clip limit", min: 0.5, max: 10, value: 2, step: 0.5);
     private readonly NumberParameter _tiles = new("Số ô lưới", min: 2, max: 16, value: 8);
 
-    public string Name => "Cân bằng histogram";
+    public string Name => "Cân bằng sáng (HistogramEqualize)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

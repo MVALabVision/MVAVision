@@ -17,7 +17,7 @@ public class DenoiseProcessor : IImageProcessor
     private readonly NumberParameter _templateSize = new("Cửa sổ mẫu", min: 3, max: 11, value: 7, step: 2);
     private readonly NumberParameter _searchSize = new("Vùng tìm kiếm", min: 7, max: 35, value: 21, step: 2);
 
-    public string Name => "Khử nhiễu (Non-Local Means)";
+    public string Name => "Khử nhiễu (NonLocalMeans)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

@@ -10,7 +10,7 @@ public class BilateralFilterProcess : IImageProcessor
     private readonly NumberParameter _sigmaColor = new("Sigma Color", min: 1, max: 255, value: 75, step: 1);
     private readonly NumberParameter _sigmaSpace = new("Sigma Space", min: 1, max: 500, value: 75, step: 1);
 
-    public string Name => "Bilateral Filter (lọc song song)";
+    public string Name => "Lọc song phương (BilateralFilter)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

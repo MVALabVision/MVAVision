@@ -31,7 +31,7 @@ public class TemplateMatchProcessor : IImageProcessor
     private readonly ToolOutput<double> _y = new("Y");
     private readonly ToolOutput<bool> _found = new("Tìm thấy");
 
-    public string Name => "Template matching (ảnh mẫu)";
+    public string Name => "So khớp mẫu v1 (TemplateMatch)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 

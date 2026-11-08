@@ -15,7 +15,7 @@ public class MeanBrightnessProcessor : IImageProcessor
 {
     private readonly ToolOutput<double> _mean = new("Độ sáng TB");
 
-    public string Name => "Đo độ sáng TB";
+    public string Name => "Đo độ sáng (MeanBrightness)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; } = Array.Empty<ProcessorParameter>();
 

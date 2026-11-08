@@ -24,7 +24,7 @@ public class MorphologyProcessor : IImageProcessor
     private readonly NumberParameter _kernelSize = new("Kernel", min: 1, max: 31, value: 5, step: 2);
     private readonly NumberParameter _iterations = new("Số lần lặp", min: 1, max: 10, value: 1);
 
-    public string Name => "Morphology (hình thái học)";
+    public string Name => "Hình thái học (Morphology)";
 
     public IReadOnlyList<ProcessorParameter> Parameters { get; }
 
