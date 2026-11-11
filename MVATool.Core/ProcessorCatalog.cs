@@ -75,8 +75,9 @@ public class ProcessorCatalog : IProcessorCatalog
         // --- So khớp mẫu ---
         Describe(() => new TemplateMatchingProcessor()),
 
-        // --- OCR ---
+        // --- OCR & Barcode ---
         Describe(() => new OCRProcessor()),
+        Describe(() => new BarcodeProcessor()),
     };
 
     /// <summary>Tìm tool theo Id (dùng khi mở file job). null nếu không có.</summary>

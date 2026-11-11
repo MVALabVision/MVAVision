@@ -634,90 +634,65 @@
 
     <DockPanel>
 
-        <!-- ══════════════ HEADER: nhận diện thương hiệu + trạng thái máy ══════════════ -->
-        <Border DockPanel.Dock="Top" Background="{DynamicResource MvaHeaderBrush}">
+        <!-- ══════════════ HEADER: logo + trạng thái + đồng hồ ══════════════ -->
+        <Border DockPanel.Dock="Top" Background="White" Padding="14,0">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="2" />
-                </Grid.RowDefinitions>
-                <Grid Margin="14,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-                    <!--
-                        LOGO MVA LAB: biểu tượng trên ô trắng bo góc (giữ đúng màu gốc ở cả 2 theme)
-                        + logo chữ. MvaWordmarkImage khai báo trong theme: bản tối đã đổi phần
-                        chữ đen thành trắng, bản sáng giữ màu gốc → đổi theme là logo đổi theo.
-                    -->
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="46" Height="46" CornerRadius="10" Background="White" Padding="2"
-                                BorderBrush="{DynamicResource MvaGoldBrush}" BorderThickness="1.5">
-                            <Border.Effect>
-                                <DropShadowEffect Color="#000000" BlurRadius="10" ShadowDepth="1" Opacity="0.35" />
-                            </Border.Effect>
-                            <Image Source="/Assets/mva-mark.png" RenderOptions.BitmapScalingMode="HighQuality" />
-                        </Border>
-                        <Image Source="{DynamicResource MvaWordmarkImage}" Height="40" Margin="14,0,0,0"
-                               RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center" />
-                        <!-- Vạch phân cách gold -->
-                        <Rectangle Width="1.5" Height="34" Margin="16,0" VerticalAlignment="Center"
-                                   Fill="{DynamicResource MvaGoldGradientBrush}" />
+                <!-- Logo MVA LAB (đã crop bỏ padding trắng) -->
+                <Image Source="/Assets/mva-lab-logo.png" Height="48" Margin="4"
+                       RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center"
+                       Stretch="Uniform" />
+
+                <!-- Cụm LED trạng thái -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Text="TRẠNG THÁI" FontSize="9" Foreground="#888"
+                               HorizontalAlignment="Right" Margin="0,0,0,2" />
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource StatusLed}" Margin="0,0,7,0" />
+                        <TextBlock Text="{Binding SystemStateText}" FontSize="12"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" Foreground="#222" />
                     </StackPanel>
+                </StackPanel>
 
-                    <!-- Tên phần mềm + dòng mô tả -->
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock FontSize="20" FontWeight="Bold"><Run Text="MVA" Foreground="{DynamicResource MvaAccentBrush}" /><Run Text="Vision" FontWeight="Light" /></TextBlock>
-                        <TextBlock Text="M A C H I N E   V I S I O N   S U I T E  ·  v1.0"
-                                   Foreground="{DynamicResource MvaGoldBrush}" FontSize="9" Margin="1,1,0,0" />
-                    </StackPanel>
+                <Border Grid.Column="3" Width="1" Height="30" Margin="18,0" Background="#DDD" />
 
-                    <!-- Cụm LED trạng thái: SẴN SÀNG / ĐANG XỬ LÝ / BATCH -->
-                    <StackPanel Grid.Column="3" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource Muted}" Text="TRẠNG THÁI" FontSize="9"
-                                   HorizontalAlignment="Right" Margin="0,0,0,2" />
-                        <StackPanel Orientation="Horizontal">
-                            <Border Style="{StaticResource StatusLed}" Margin="0,0,7,0" />
-                            <TextBlock Text="{Binding SystemStateText}" FontSize="12"
-                                       FontWeight="SemiBold" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </StackPanel>
+                <!-- Đồng hồ hệ thống -->
+                <StackPanel Grid.Column="4" VerticalAlignment="Center">
+                    <TextBlock FontFamily="{StaticResource MvaMonoFont}" Text="{Binding SystemStatus.ClockText}"
+                               FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="#1A56DB" />
+                    <TextBlock Text="{Binding SystemStatus.DateText}" FontSize="9" Foreground="#888"
+                               HorizontalAlignment="Right" />
+                </StackPanel>
 
-                    <Border Grid.Column="4" Width="1" Height="30" Margin="18,0"
-                            Background="{DynamicResource MvaBorderBrush}" />
-
-                    <!-- Đồng hồ hệ thống — SystemStatusViewModel cập nhật mỗi giây -->
-                    <StackPanel Grid.Column="5" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource Mono}" Text="{Binding SystemStatus.ClockText}"
-                                   FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Right"
-                                   Foreground="{DynamicResource MvaGoldLightBrush}" />
-                        <TextBlock Style="{StaticResource Muted}" Text="{Binding SystemStatus.DateText}"
-                                   FontSize="9" HorizontalAlignment="Right" />
-                    </StackPanel>
-
-                    <Button Grid.Column="6" Style="{StaticResource ToolButton}" Content="🌓" Margin="14,0,0,0"
-                            VerticalAlignment="Center" Click="OnToggleThemeClick"
-                            ToolTip="Đổi giao diện sáng / tối" />
-                </Grid>
-
-                <!-- Đường kẻ nhấn dưới header: GOLD → xanh thương hiệu → mờ dần -->
-                <Border Grid.Row="1">
-                    <Border.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                            <GradientStop Color="#FFF2D47E" Offset="0" />
-                            <GradientStop Color="#FFD4AF37" Offset="0.22" />
-                            <GradientStop Color="#CC3D8BFF" Offset="0.55" />
-                            <GradientStop Color="#003D8BFF" Offset="1" />
-                        </LinearGradientBrush>
-                    </Border.Background>
-                </Border>
+                <Button Grid.Column="5" Content="🌓" Margin="14,0,0,0"
+                        VerticalAlignment="Center" Click="OnToggleThemeClick"
+                        ToolTip="Đổi giao diện sáng / tối" FontSize="18" Cursor="Hand"
+                        Background="Transparent" BorderBrush="#CCC" BorderThickness="1"
+                        Foreground="#333" Padding="8,4">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                    CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#F0F0F0" />
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#1A56DB" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
             </Grid>
         </Border>
 
@@ -1167,7 +1142,7 @@
                         <Grid Background="{DynamicResource MvaViewportBrush}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                         Visibility="{Binding OriginalImage, Converter={StaticResource NullToVis}}">
-                                <Image Source="{DynamicResource MvaWordmarkImage}" Width="220" Opacity="0.22"
+                                <Image Source="/Assets/mva-lab-logo-transparent.png" Width="280" Opacity="0.12"
                                        RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,0,22" />
                                 <TextBlock Text="Kéo thả ảnh vào đây, hoặc bấm 📂 Mở ảnh (Ctrl+O)&#x0a;&#x0a;Lăn chuột: zoom — Kéo chuột: di chuyển&#x0a;Double-click: vừa khung"
                                            TextAlignment="Center" Opacity="0.5" />
@@ -1215,9 +1190,13 @@
                             </Grid>
                         </Border>
                         <Grid Background="{DynamicResource MvaViewportBrush}">
-                            <TextBlock Text="Chạy job để xem kết quả (F5)"
-                                       Opacity="0.5" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Visibility="{Binding ResultImage, Converter={StaticResource NullToVis}}" />
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Visibility="{Binding ResultImage, Converter={StaticResource NullToVis}}">
+                                <Image Source="/Assets/mva-lab-logo-transparent.png" Width="280" Opacity="0.12"
+                                       RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,0,22" />
+                                <TextBlock Text="Chạy job để xem kết quả (F5)&#x0a;&#x0a;Lăn chuột: zoom — Kéo chuột: di chuyển&#x0a;Double-click: vừa khung"
+                                           TextAlignment="Center" Opacity="0.5" />
+                            </StackPanel>
                             <controls:ImageViewer Source="{Binding ResultImage}"
                                                   PixelHoverCommand="{Binding HoverResultPixelCommand}" />
                             <Grid IsHitTestVisible="False" Margin="8">
