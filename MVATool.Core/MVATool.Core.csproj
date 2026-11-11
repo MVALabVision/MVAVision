@@ -16,6 +16,7 @@
         <!-- Chỉ dùng ObservableObject cho parameter — toolkit này không phụ thuộc UI framework -->
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
         <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+        <PackageReference Include="ZXing.Net" Version="0.16.11" />
     </ItemGroup>
 
 </Project>
